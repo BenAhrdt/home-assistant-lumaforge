@@ -10,6 +10,7 @@ from homeassistant.components.light import (
     ATTR_RGB_COLOR,
     ColorMode,
     LightEntity,
+    LightEntityFeature,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
@@ -47,6 +48,7 @@ class LumaForgeZoneLight(LumaForgeEntity, LightEntity):
 
     _attr_color_mode = ColorMode.RGB
     _attr_supported_color_modes = {ColorMode.RGB}
+    _attr_supported_features = LightEntityFeature.EFFECT
     _attr_effect_list = list(EFFECTS)
 
     def __init__(self, entry: LumaForgeConfigEntry, zone_id: str) -> None:

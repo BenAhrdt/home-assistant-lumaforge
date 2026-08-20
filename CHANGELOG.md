@@ -6,6 +6,11 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- Advertise effect support on zone lights so Home Assistant displays the
+  effect selector.
+
 ## [0.2.0] - 2026-08-20
 
 ### Added

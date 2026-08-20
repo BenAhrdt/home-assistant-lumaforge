@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
 
+from homeassistant.components.light import LightEntityFeature
+
 from custom_components.lumaforge.api import (
     LumaForgeAutomation,
     LumaForgeData,
@@ -50,6 +52,9 @@ async def test_zone_light_uses_zone_selection() -> None:
     zone = LumaForgeZone("z1", "Bench", (1, 2), {})
     entry = control_entry(LumaForgeData(INFO, STATUS, zones=(zone,)))
     entity = LumaForgeZoneLight(entry, zone.zone_id)
+
+    assert entity.supported_features == LightEntityFeature.EFFECT
+    assert entity.effect_list == ["solid", "blink", "pulse", "wipe", "chase", "rainbow"]
 
     await entity.async_turn_on(rgb_color=(255, 136, 0), brightness=128, effect="solid")
 
