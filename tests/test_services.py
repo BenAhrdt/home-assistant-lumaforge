@@ -59,7 +59,7 @@ async def test_led_and_range_services(hass: HomeAssistant) -> None:
         },
         blocking=True,
     )
-    coordinator.client.async_set_preview.assert_await_with(
+    coordinator.client.async_set_preview.assert_awaited_with(
         (1, 2, 3), "#ff0000", 1.0, "solid", 1.0, "forward"
     )
 

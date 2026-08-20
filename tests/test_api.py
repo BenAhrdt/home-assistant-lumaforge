@@ -47,8 +47,8 @@ async def test_ipv6_url_and_optional_values() -> None:
     assert info.rssi is None
 
 
-async def test_existing_endpoints_and_status_parsing() -> None:
-    """Use only the two documented endpoints and parse their current models."""
+async def test_diagnostic_endpoints_and_status_parsing() -> None:
+    """Parse the two mandatory diagnostic endpoint models."""
     client = LumaForgeApiClient(MagicMock(), "device.local", 80)
     client._get = AsyncMock(
         side_effect=[
@@ -69,17 +69,18 @@ async def test_existing_endpoints_and_status_parsing() -> None:
         ]
     )
 
-    data = await client.async_get_data()
+    info = await client.async_get_info()
+    status = await client.async_get_status()
 
     assert [call.args[0] for call in client._get.await_args_list] == [
         "/api/v1/info",
         "/api/v1/status",
     ]
-    assert data.info.capabilities == ("scenes", "zones")
-    assert data.status.connected is True
-    assert data.status.rssi == -61
-    assert data.status.cpu_percent == 3.5
-    assert data.status.memory_used_bytes == 100
+    assert info.capabilities == ("scenes", "zones")
+    assert status.connected is True
+    assert status.rssi == -61
+    assert status.cpu_percent == 3.5
+    assert status.memory_used_bytes == 100
 
 
 async def test_older_firmware_without_capabilities() -> None:
