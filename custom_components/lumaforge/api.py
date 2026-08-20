@@ -782,7 +782,7 @@ class LumaForgeApiClient:
         return await self._send_update_command(
             {"type": "update.install", "version": version},
             frozenset(("restarting", "failed")),
-            600,
+            180,
         )
 
     async def async_set_preview(

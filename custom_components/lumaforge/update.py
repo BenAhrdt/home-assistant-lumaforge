@@ -19,7 +19,9 @@ from .api import LumaForgeError
 from .entity import LumaForgeEntity
 
 _ACTIVE_STATES = frozenset(("checking", "downloading", "installing", "restarting"))
-_OFFER_STATES = frozenset(("available", "downloading", "installing", "restarting"))
+_OFFER_STATES = frozenset(
+    ("available", "downloading", "installing", "restarting", "failed")
+)
 _ERROR_MESSAGES = {
     "manifest_connection_failed": "Unable to reach the firmware manifest",
     "invalid_manifest": "The firmware manifest is invalid",
@@ -141,4 +143,5 @@ class LumaForgeFirmwareUpdate(LumaForgeEntity, UpdateEntity):
         try:
             await self.coordinator.client.async_install_update(latest)
         except LumaForgeError as err:
+            self.coordinator.mark_update_failed(str(err))
             raise HomeAssistantError(str(err)) from err

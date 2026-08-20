@@ -92,6 +92,20 @@ class LumaForgeCoordinator(DataUpdateCoordinator[LumaForgeData]):
             self.update_status_received_at = datetime.now(UTC)
             self.ota_restart_expected = False
 
+    def mark_update_failed(self, error: str) -> None:
+        """End locally when an OTA command aborts without a terminal event."""
+        if self.update_status is None:
+            return
+        self.update_status = replace(
+            self.update_status,
+            state="failed",
+            progress=None,
+            error=error,
+        )
+        self.update_status_received_at = datetime.now(UTC)
+        self.ota_restart_expected = False
+        self.async_update_listeners()
+
     @property
     def platforms(self) -> list[Platform]:
         """Return platforms backed by endpoints confirmed during setup."""

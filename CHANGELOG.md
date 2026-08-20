@@ -6,6 +6,14 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-08-20
+
+### Fixed
+
+- End firmware update progress with a retryable failure after a WebSocket
+  interruption or three-minute command timeout instead of remaining at
+  `Installing (0%)` indefinitely.
+
 ## [0.4.2] - 2026-08-20
 
 ### Fixed
@@ -119,7 +127,8 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   are used.
 - Downloaded diagnostics redact IP addresses and hostnames.
 
-[Unreleased]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.4.2...HEAD
+[Unreleased]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.4.3...HEAD
+[0.4.3]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.3.1...v0.4.0

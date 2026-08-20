@@ -12,6 +12,7 @@ from homeassistant.const import STATE_OFF, STATE_ON
 from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.lumaforge.api import (
+    LumaForgeConnectionError,
     LumaForgeData,
     LumaForgeUpdateStatus,
 )
@@ -98,7 +99,7 @@ def test_update_entity_uses_semantic_prerelease_order(
         ("downloading", True, 62, True),
         ("installing", True, None, True),
         ("restarting", True, None, True),
-        ("failed", False, None, False),
+        ("failed", False, None, True),
     ],
 )
 def test_update_entity_state_mapping(
@@ -138,3 +139,19 @@ async def test_update_entity_rejects_unconfirmed_install() -> None:
     entity = LumaForgeFirmwareUpdate(update_entry("idle"))
     with pytest.raises(HomeAssistantError, match="No confirmed"):
         await entity.async_install(None, False)
+
+
+async def test_update_entity_ends_progress_when_install_command_aborts() -> None:
+    """A transport failure must not leave Home Assistant installing forever."""
+    entry = update_entry()
+    entry.runtime_data.client.async_install_update.side_effect = (
+        LumaForgeConnectionError("WebSocket disconnected")
+    )
+    entity = LumaForgeFirmwareUpdate(entry)
+
+    with pytest.raises(HomeAssistantError, match="WebSocket disconnected"):
+        await entity.async_install(None, False)
+
+    entry.runtime_data.mark_update_failed.assert_called_once_with(
+        "WebSocket disconnected"
+    )
