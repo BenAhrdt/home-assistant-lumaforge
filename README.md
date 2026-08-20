@@ -6,7 +6,7 @@ devices via `_lumaforge._tcp.local.`, verifies their identity through
 device-internal automations through the local REST and WebSocket APIs. No
 account, cloud service, authentication, or YAML configuration is used.
 
-Current integration version: **0.2.0**. Release history is available in the
+Current integration version: **0.3.0**. Release history is available in the
 [changelog](CHANGELOG.md).
 
 ## Requirements
@@ -45,19 +45,22 @@ updates the stored connection address.
 ## Device information and entities
 
 The integration registers manufacturer, model, serial/device ID, installed
-firmware version, device name, and a local configuration URL. It polls every 60
-seconds and provides:
+firmware version, device name, and a local configuration URL. While connected,
+it refreshes the complete snapshot every 60 seconds and provides:
 
 - connectivity, Wi-Fi signal, CPU usage, used/total memory, and memory usage;
 - disabled-by-default diagnostic sensors for IP, hostname, device ID, device
   name, firmware/API version, model, and capabilities.
 
-Unavailable devices remain configured and their entities become unavailable.
-Downloaded diagnostics redact hostnames and IP addresses.
+After a failed request, the integration probes only `/api/v1/info` every 15
+seconds. Once that succeeds, it immediately reloads the complete snapshot. The
+connectivity entity remains available and reports **Disconnected**; controls
+and live diagnostic values become unavailable so stale data cannot look
+current. Downloaded diagnostics redact hostnames and IP addresses.
 
 ## Privacy and security
 
-All communication is local, read-only HTTP. The integration does not contact
+All communication is local HTTP and WebSocket traffic. The integration does not contact
 GitHub, a LumaForge cloud service, or any other external service at runtime. It
 does not request or log Wi-Fi credentials. Because the current API uses plain
 HTTP without authentication, keep devices on a trusted local network.
@@ -75,8 +78,9 @@ discovery.
 
 - Stored scenes are Home Assistant scene entities, with one scene-stop button.
 - Zones are RGB light entities with acknowledged, in-memory optimistic state.
-- Device-internal automations have run buttons and, when available, enable
-  switches. They are not represented as Home Assistant automations.
+- Multi-step device-internal automations have native start buttons, enable
+  switches, global stop/next controls and an authoritative status sensor. They
+  are not represented as Home Assistant automations.
 - `lumaforge.set_led`, `lumaforge.set_led_range`, and
   `lumaforge.apply_to_zone` address LEDs without creating one entity per LED.
 

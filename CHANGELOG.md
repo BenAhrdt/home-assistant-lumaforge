@@ -6,8 +6,25 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-20
+
+### Added
+
+- Native multi-step automation start, stop and next-step commands, global
+  controls, runtime status sensor and matching Home Assistant services.
+- Backwards-compatible parsing of legacy single-scene automations.
+
+### Changed
+
+- Probe only the lightweight identity endpoint every 15 seconds while a device
+  is offline, then reload all data immediately after it returns.
+- Trigger an API connection check when an established WebSocket disconnects.
+- Reduce the request timeout from 10 to 5 seconds.
+
 ### Fixed
 
+- Keep the connectivity entity available so it reports `Disconnected` instead
+  of becoming unavailable when polling fails.
 - Advertise effect support on zone lights so Home Assistant displays the
   effect selector.
 
@@ -70,7 +87,8 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   are used.
 - Downloaded diagnostics redact IP addresses and hostnames.
 
-[Unreleased]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.1.3...v0.2.0
 [0.1.3]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.1.1...v0.1.2

@@ -18,10 +18,16 @@
     }
   },
   "entity": {
-    "button": { "stop_scene": { "name": "Szene stoppen" } },
+    "button": {
+      "next_automation_step": { "name": "Nächster Automationsschritt" },
+      "stop_automation": { "name": "Automation stoppen" },
+      "stop_scene": { "name": "Szene stoppen" }
+    },
     "binary_sensor": { "connectivity": { "name": "Verbindung" } },
     "sensor": {
-      "api_version": { "name": "API-Version" }, "capabilities": { "name": "Fähigkeiten" },
+      "api_version": { "name": "API-Version" },
+      "automation_status": { "name": "Automationsstatus" },
+      "capabilities": { "name": "Fähigkeiten" },
       "cpu_usage": { "name": "CPU-Auslastung" }, "device_id": { "name": "Geräte-ID" },
       "device_name": { "name": "Gerätename" }, "firmware_version": { "name": "Firmwareversion" },
       "hostname": { "name": "Hostname" }, "ip_address": { "name": "IP-Adresse" },
@@ -42,6 +48,18 @@
     "apply_to_zone": {
       "name": "Auf Zone anwenden",
       "description": "Alle LEDs einer gespeicherten Zone setzen"
+    },
+    "start_automation": {
+      "name": "Automation starten",
+      "description": "Eine vollständige geräteinterne Automationssequenz starten"
+    },
+    "stop_automation": {
+      "name": "Automation stoppen",
+      "description": "Die aktive geräteinterne Automationssequenz stoppen"
+    },
+    "next_automation_step": {
+      "name": "Nächster Automationsschritt",
+      "description": "Sofort zum nächsten Schritt der aktiven Automation wechseln"
     }
   }
 }

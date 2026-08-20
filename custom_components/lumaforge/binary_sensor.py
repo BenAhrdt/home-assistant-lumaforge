@@ -38,8 +38,15 @@ class LumaForgeConnectivitySensor(LumaForgeEntity, BinarySensorEntity):
         super().__init__(entry, DESCRIPTION.key)
 
     @property
+    def available(self) -> bool:
+        """Keep the sensor available so it can report a failed connection."""
+        return True
+
+    @property
     def is_on(self) -> bool:
         """Return whether the device reports a connected network."""
+        if not self.coordinator.last_update_success:
+            return False
         connected = self.coordinator.data.status.connected
         if connected is None:
             connected = self.coordinator.data.info.connected

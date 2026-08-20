@@ -156,7 +156,12 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up LumaForge sensors."""
-    async_add_entities(LumaForgeSensor(entry, description) for description in SENSORS)
+    entities: list[SensorEntity] = [
+        LumaForgeSensor(entry, description) for description in SENSORS
+    ]
+    if entry.runtime_data.supports_automation_sequences:
+        entities.append(LumaForgeAutomationStatusSensor(entry))
+    async_add_entities(entities)
 
 
 class LumaForgeSensor(LumaForgeEntity, SensorEntity):
@@ -178,3 +183,73 @@ class LumaForgeSensor(LumaForgeEntity, SensorEntity):
     def extra_state_attributes(self) -> dict[str, Any] | None:
         fn = self.entity_description.attributes_fn
         return fn(self.coordinator.data) if fn else None
+
+
+class LumaForgeAutomationStatusSensor(LumaForgeEntity, SensorEntity):
+    """Expose the authoritative device-side automation runtime state."""
+
+    _attr_translation_key = "automation_status"
+
+    def __init__(self, entry: LumaForgeConfigEntry) -> None:
+        super().__init__(entry, "automation_status")
+
+    @property
+    def available(self) -> bool:
+        return bool(
+            super().available
+            and self.coordinator.client.websocket_connected
+            and self.coordinator.automation_state is not None
+        )
+
+    @property
+    def native_value(self) -> str | None:
+        state = self.coordinator.automation_state
+        return state.state if state else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        state = self.coordinator.automation_state
+        if state is None:
+            return {}
+        automation = next(
+            (
+                item
+                for item in self.coordinator.data.automations
+                if item.automation_id == state.automation_id
+            ),
+            None,
+        )
+        scene = next(
+            (
+                item
+                for item in self.coordinator.data.scenes
+                if item.scene_id == state.scene_id
+            ),
+            None,
+        )
+        step = None
+        if (
+            automation is not None
+            and state.step_index is not None
+            and state.step_index < len(automation.steps)
+        ):
+            step = automation.steps[state.step_index]
+        return {
+            "automation_id": state.automation_id,
+            "automation_name": automation.name if automation else None,
+            "step_index": state.step_index,
+            "step_number": state.step_index + 1
+            if state.step_index is not None
+            else None,
+            "step_count": len(automation.steps) if automation else None,
+            "scene_id": state.scene_id,
+            "scene_name": scene.name if scene else None,
+            "elapsed_seconds": state.elapsed_seconds,
+            "advance": step.advance if step else None,
+            "duration_seconds": step.duration_seconds if step else None,
+            "last_update": (
+                self.coordinator.automation_state_received_at.isoformat()
+                if self.coordinator.automation_state_received_at
+                else None
+            ),
+        }

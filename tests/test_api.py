@@ -14,6 +14,8 @@ from custom_components.lumaforge.api import (
     LumaForgeConnectionError,
     LumaForgeIncompatibleApiError,
     LumaForgeInvalidResponseError,
+    parse_automation_state,
+    parse_automations,
 )
 
 
@@ -125,6 +127,73 @@ async def test_editor_endpoint_paths_and_models() -> None:
     assert layout.output_leds["out"] == {2, 3}
 
 
+def test_automation_sequence_and_legacy_parsing() -> None:
+    """Parse native steps and normalize the legacy sceneId representation."""
+    native = parse_automations(
+        [
+            {
+                "id": "native",
+                "name": "Native",
+                "steps": [
+                    {"sceneId": "one", "advance": "scene_finished"},
+                    {
+                        "sceneId": "two",
+                        "advance": "after_delay",
+                        "durationSeconds": 2.5,
+                    },
+                ],
+                "futureField": {"keep": True},
+            }
+        ]
+    )[0]
+    legacy = parse_automations([{"id": "legacy", "sceneId": "old", "enabled": True}])[0]
+
+    assert [step.scene_id for step in native.steps] == ["one", "two"]
+    assert native.steps[1].duration_seconds == 2.5
+    assert native.raw["futureField"] == {"keep": True}
+    assert legacy.steps[0].advance == "manual"
+    assert legacy.steps[0].scene_id == "old"
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        [{"id": "empty", "steps": []}],
+        [
+            {
+                "id": "delay",
+                "steps": [{"sceneId": "one", "advance": "after_delay"}],
+            }
+        ],
+    ],
+)
+def test_invalid_automation_steps(payload: list[dict]) -> None:
+    with pytest.raises(LumaForgeInvalidResponseError):
+        parse_automations(payload)
+
+
+def test_automation_state_parsing() -> None:
+    state = parse_automation_state(
+        {
+            "type": "automation.state",
+            "state": "running",
+            "automationId": "morning",
+            "stepIndex": 1,
+            "sceneId": "sunrise",
+            "elapsedSeconds": 3.2,
+        }
+    )
+    stopped = parse_automation_state(
+        {"type": "automation.state", "state": "stopped", "elapsedSeconds": 0}
+    )
+    assert (state.automation_id, state.step_index, state.scene_id) == (
+        "morning",
+        1,
+        "sunrise",
+    )
+    assert stopped.automation_id is None
+
+
 async def test_websocket_url_selection() -> None:
     """Use port 81 for ESP32 and the HTTP /ws path for the simulator."""
     client = LumaForgeApiClient(MagicMock(), "192.0.2.1", 8080)
@@ -150,6 +219,21 @@ async def test_websocket_url_selection() -> None:
             "scene.play.accepted",
         ),
         ("async_stop_scene", {"type": "scene.stop"}, "scene.stop.accepted"),
+        (
+            "async_start_automation",
+            {"type": "automation.start", "automationId": "s1"},
+            "automation.start.accepted",
+        ),
+        (
+            "async_stop_automation",
+            {"type": "automation.stop"},
+            "automation.stop.accepted",
+        ),
+        (
+            "async_next_automation_step",
+            {"type": "automation.next"},
+            "automation.next.accepted",
+        ),
     ],
 )
 async def test_websocket_scene_commands(
@@ -160,7 +244,7 @@ async def test_websocket_scene_commands(
     client._ws = MagicMock()
     client._ws.send_json = AsyncMock()
     client._ws_connected.set()
-    args = ("s1",) if method == "async_play_scene" else ()
+    args = ("s1",) if method in ("async_play_scene", "async_start_automation") else ()
     task = asyncio.create_task(getattr(client, method)(*args))
     await asyncio.sleep(0)
     client._ws.send_json.assert_awaited_once_with(payload)
@@ -191,6 +275,26 @@ async def test_preview_command_and_websocket_error() -> None:
     )
     await client._handle_ws_message({"type": "error", "message": "bad selection"})
     with pytest.raises(LumaForgeCommandError, match="bad selection"):
+        await task
+
+
+async def test_automation_command_timeout_and_disconnect() -> None:
+    """Surface a missing acknowledgement and an in-flight disconnect."""
+    timeout_client = LumaForgeApiClient(MagicMock(), "device.local", 80, timeout=0.01)
+    timeout_client._ws = MagicMock()
+    timeout_client._ws.send_json = AsyncMock()
+    timeout_client._ws_connected.set()
+    with pytest.raises(LumaForgeConnectionError, match="timed out"):
+        await timeout_client.async_stop_automation()
+
+    disconnect_client = LumaForgeApiClient(MagicMock(), "device.local", 80)
+    disconnect_client._ws = MagicMock()
+    disconnect_client._ws.send_json = AsyncMock()
+    disconnect_client._ws_connected.set()
+    task = asyncio.create_task(disconnect_client.async_next_automation_step())
+    await asyncio.sleep(0)
+    disconnect_client._fail_pending(LumaForgeConnectionError("WebSocket disconnected"))
+    with pytest.raises(LumaForgeConnectionError, match="disconnected"):
         await task
 
 

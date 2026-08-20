@@ -7,7 +7,7 @@ be normalized by clients.
 ## REST endpoints
 
 All requests use the mDNS-advertised HTTP host and port, are asynchronous and
-have a 10-second timeout. HTTP `404` on an optional editor endpoint means that
+have a 5-second timeout. HTTP `404` on an optional editor endpoint means that
 the installed firmware does not support that resource. Other HTTP errors,
 invalid JSON, timeouts and connection failures remain errors rather than being
 interpreted as missing capabilities.
@@ -32,11 +32,40 @@ and an array of capability strings. `GET /api/v1/status` returns optional
 `wifi`, `ip`, `rssi`, `cpuPercent`, `memoryUsedBytes` and `memoryTotalBytes`
 fields. These two endpoints remain mandatory.
 
+The complete snapshot is refreshed every 60 seconds while connected. Once a
+request fails, only the lightweight `/api/v1/info` identity endpoint is probed
+every 15 seconds. A successful probe immediately triggers a complete refresh.
+An established WebSocket connection closing also triggers an immediate REST
+connection check. The connectivity entity remains available and reports the
+failed poll as disconnected; controls and live diagnostics are unavailable
+until the complete refresh succeeds again.
+
 The editor list endpoints may return either a JSON array or an object containing
 that array under `layout`, `zones`, `scenes` or `automations`. Every scene, zone
 and automation must have a stable string `id`. A scene contains `animations`.
-A zone contains logical LED indices in `leds`. An automation contains `sceneId`
-and may contain Boolean `enabled`.
+A zone contains logical LED indices in `leds`. A current automation contains a
+non-empty `steps` array and may contain Boolean `enabled`:
+
+```json
+{
+  "id": "automation-garage",
+  "name": "Garage sequence",
+  "trigger": "manual",
+  "enabled": true,
+  "steps": [
+    {"sceneId": "opening", "advance": "scene_finished"},
+    {"sceneId": "warning", "advance": "after_delay", "durationSeconds": 15},
+    {"sceneId": "open", "advance": "manual"}
+  ]
+}
+```
+
+`scene_finished` advances after all finite scene animations finish; a looping
+scene does not finish automatically. `after_delay` requires a positive
+`durationSeconds`, stops the current scene after that delay and advances.
+`manual` waits for `automation.next` or `automation.stop`. Legacy objects with a
+top-level `sceneId` are normalized in memory to one manual step. Their original
+JSON and every unknown field are preserved during full-list PUT updates.
 
 Layout sections/outputs provide `id` or `outputId`, `startIndex`, and `ledCount`
 (the parser also accepts the documented aliases `start`, `count` and
@@ -73,7 +102,33 @@ Implemented commands are:
 {"type":"preview.set","selection":[0,1],"color":"#5aa5e1","brightness":0.8,"effect":"solid","speed":1.0,"direction":"forward"}
 {"type":"preview.cancel"}
 {"type":"preview.apply"}
+{"type":"automation.start","automationId":"automation-garage"}
+{"type":"automation.stop"}
+{"type":"automation.next"}
 ```
+
+The automation commands are available only with the
+`automation_sequences` capability. Their acknowledgements are respectively
+`automation.start.accepted`, `automation.stop.accepted`, and
+`automation.next.accepted`. An `error` message rejects the serialized pending
+command.
+
+The device sends the authoritative runtime state on connect and whenever it
+changes:
+
+```json
+{
+  "type": "automation.state",
+  "automationId": "automation-garage",
+  "state": "running",
+  "stepIndex": 1,
+  "sceneId": "warning",
+  "elapsedSeconds": 4.2
+}
+```
+
+A stopped state uses null IDs and indices. Home Assistant does not invent a
+state before this message arrives and clears the previous state on disconnect.
 
 The client handles `layout.updated`, `zones.updated`, `scenes.updated` and
 `automations.updated`. A simulator payload is validated and applied directly.
@@ -84,12 +139,18 @@ An ESP32 event without `payload` reloads the corresponding REST endpoint.
 - Each stored scene is a `SceneEntity`; activation sends `scene.play`.
 - One button sends `scene.stop` while scenes exist.
 - Each zone is an RGB `LightEntity`; its `leds` become `preview.set.selection`.
-- Each device-internal automation has a run button that plays its `sceneId`.
+- With `automation_sequences`, each device-internal automation has a start
+  button that sends its immutable ID to `automation.start`.
+- One global stop button, one global next-step button and one automation status
+  sensor expose the single device-side runtime sequence.
 - Automations containing `enabled` also have a switch backed by the full-list
   GET/PUT process.
 - `lumaforge.set_led`, `lumaforge.set_led_range` and
   `lumaforge.apply_to_zone` expose targeted control without creating hundreds
   of LED entities.
+- `lumaforge.start_automation`, `lumaforge.stop_automation`, and
+  `lumaforge.next_automation_step` expose the same native sequence commands to
+  Home Assistant automations and scripts.
 
 Entities use immutable device object IDs in their unique IDs. Coordinator
 updates reconcile additions, renames and deletions; deleted objects are also
@@ -110,10 +171,14 @@ with brightness `0`; `preview.cancel` is not used because it could affect other
 selections.
 
 Automations are device-stored configuration, not Home Assistant automations.
-The switch persists `enabled`, while the run button directly tests `sceneId` in
-the same way as the editor. Current evidence indicates that time scheduling may
-be executed by editor JavaScript; this integration does not claim autonomous
-ESP32 scheduling.
+After `automation.start`, the firmware autonomously executes all sequence
+steps. However, the daily invocation for `trigger: "time"` is still initiated
+by editor JavaScript, so this integration does not claim autonomous daily ESP32
+scheduling. Home Assistant can start such a sequence at any time.
+
+Firmware with the `automations` endpoint but without `automation_sequences`
+continues to expose stored enabled switches and accepts legacy `sceneId`
+objects, but the integration does not send unsupported `automation.*` commands.
 
 The `automations` endpoint can exist without an `automations` capability, so
 the integration probes known optional endpoints and treats only `404` as

@@ -9,6 +9,7 @@ import voluptuous as vol
 from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse
 from homeassistant.exceptions import ServiceValidationError
 
+from .api import LumaForgeError
 from .const import DATA_COORDINATORS, DIRECTIONS, DOMAIN, EFFECTS
 from .coordinator import LumaForgeCoordinator
 
@@ -45,6 +46,14 @@ SET_LED_RANGE_SCHEMA = vol.Schema(
 APPLY_ZONE_SCHEMA = vol.Schema(
     {**TARGET_SCHEMA, **CONTROL_SCHEMA, vol.Required("zone_id"): cv.string}
 )
+AUTOMATION_TARGET_SCHEMA = {
+    vol.Optional("config_entry_id"): cv.string,
+    vol.Optional("device_id"): cv.string,
+}
+START_AUTOMATION_SCHEMA = vol.Schema(
+    {**AUTOMATION_TARGET_SCHEMA, vol.Required("automation_id"): cv.string}
+)
+AUTOMATION_COMMAND_SCHEMA = vol.Schema(AUTOMATION_TARGET_SCHEMA)
 
 
 def _coordinator(hass: HomeAssistant, data: dict[str, Any]) -> LumaForgeCoordinator:
@@ -110,6 +119,15 @@ async def _send(
     )
 
 
+def _require_automation_sequences(coordinator: LumaForgeCoordinator) -> None:
+    if not coordinator.supports_automation_sequences:
+        raise ServiceValidationError(
+            "The device does not support native automation sequences"
+        )
+    if not coordinator.client.websocket_connected:
+        raise ServiceValidationError("The device WebSocket is not connected")
+
+
 async def async_setup_services(hass: HomeAssistant) -> None:
     """Register integration services once."""
     if hass.services.has_service(DOMAIN, "set_led"):
@@ -166,6 +184,44 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         )
         return None
 
+    async def start_automation(call: ServiceCall) -> ServiceResponse | None:
+        coordinator = _coordinator(hass, call.data)
+        _require_automation_sequences(coordinator)
+        automation_id = call.data["automation_id"]
+        if not any(
+            item.automation_id == automation_id for item in coordinator.data.automations
+        ):
+            raise ServiceValidationError(f"Unknown automation: {automation_id}")
+        try:
+            await coordinator.client.async_start_automation(automation_id)
+        except LumaForgeError as err:
+            raise ServiceValidationError(str(err)) from err
+        return None
+
+    async def stop_automation(call: ServiceCall) -> ServiceResponse | None:
+        coordinator = _coordinator(hass, call.data)
+        _require_automation_sequences(coordinator)
+        state = coordinator.automation_state
+        if state is None or state.state != "running":
+            raise ServiceValidationError("No automation is currently running")
+        try:
+            await coordinator.client.async_stop_automation()
+        except LumaForgeError as err:
+            raise ServiceValidationError(str(err)) from err
+        return None
+
+    async def next_automation_step(call: ServiceCall) -> ServiceResponse | None:
+        coordinator = _coordinator(hass, call.data)
+        _require_automation_sequences(coordinator)
+        state = coordinator.automation_state
+        if state is None or state.state != "running":
+            raise ServiceValidationError("No automation is currently running")
+        try:
+            await coordinator.client.async_next_automation_step()
+        except LumaForgeError as err:
+            raise ServiceValidationError(str(err)) from err
+        return None
+
     hass.services.async_register(DOMAIN, "set_led", set_led, schema=SET_LED_SCHEMA)
     hass.services.async_register(
         DOMAIN, "set_led_range", set_led_range, schema=SET_LED_RANGE_SCHEMA
@@ -173,9 +229,34 @@ async def async_setup_services(hass: HomeAssistant) -> None:
     hass.services.async_register(
         DOMAIN, "apply_to_zone", apply_to_zone, schema=APPLY_ZONE_SCHEMA
     )
+    hass.services.async_register(
+        DOMAIN,
+        "start_automation",
+        start_automation,
+        schema=START_AUTOMATION_SCHEMA,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        "stop_automation",
+        stop_automation,
+        schema=AUTOMATION_COMMAND_SCHEMA,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        "next_automation_step",
+        next_automation_step,
+        schema=AUTOMATION_COMMAND_SCHEMA,
+    )
 
 
 def async_unload_services(hass: HomeAssistant) -> None:
     """Remove services after the final entry unloads."""
-    for service in ("set_led", "set_led_range", "apply_to_zone"):
+    for service in (
+        "set_led",
+        "set_led_range",
+        "apply_to_zone",
+        "start_automation",
+        "stop_automation",
+        "next_automation_step",
+    ):
         hass.services.async_remove(DOMAIN, service)

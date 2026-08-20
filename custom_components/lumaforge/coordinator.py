@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import replace
+from datetime import UTC, datetime
 from typing import Any
 
 from homeassistant.const import Platform
@@ -14,14 +15,16 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .api import (
     LumaForgeApiClient,
     LumaForgeAutomation,
+    LumaForgeAutomationState,
     LumaForgeData,
     LumaForgeError,
+    parse_automation_state,
     parse_automations,
     parse_layout,
     parse_scenes,
     parse_zones,
 )
-from .const import DOMAIN, UPDATE_INTERVAL
+from .const import DOMAIN, OFFLINE_UPDATE_INTERVAL, UPDATE_INTERVAL
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,14 +42,27 @@ class LumaForgeCoordinator(DataUpdateCoordinator[LumaForgeData]):
         self.client = client
         self.automation_lock = asyncio.Lock()
         self.zone_states: dict[str, dict[str, Any]] = {}
+        self.automation_state: LumaForgeAutomationState | None = None
+        self.automation_state_received_at: datetime | None = None
         self.loaded_platforms: list[Platform] = []
+        self._offline = False
+        self._websocket_connected = False
+
+    @property
+    def supports_automation_sequences(self) -> bool:
+        """Return whether native multi-step commands are confirmed."""
+        return "automation_sequences" in self.data.info.capabilities
 
     @property
     def platforms(self) -> list[Platform]:
         """Return platforms backed by endpoints confirmed during setup."""
         resources = self.client.supported_resources
         platforms = [Platform.BINARY_SENSOR, Platform.SENSOR]
-        if "scenes" in resources or "automations" in resources:
+        if (
+            self.supports_automation_sequences
+            or "scenes" in resources
+            or "automations" in resources
+        ):
             platforms.append(Platform.BUTTON)
         if "scenes" in resources:
             platforms.append(Platform.SCENE)
@@ -58,9 +74,18 @@ class LumaForgeCoordinator(DataUpdateCoordinator[LumaForgeData]):
 
     async def _async_update_data(self) -> LumaForgeData:
         try:
-            return await self.client.async_get_data()
+            if self._offline:
+                # While offline, probe only the lightweight identity endpoint. A
+                # successful probe is followed immediately by a complete refresh.
+                await self.client.async_get_info()
+            data = await self.client.async_get_data()
         except LumaForgeError as err:
+            self._offline = True
+            self.update_interval = OFFLINE_UPDATE_INTERVAL
             raise UpdateFailed(str(err)) from err
+        self._offline = False
+        self.update_interval = UPDATE_INTERVAL
+        return data
 
     async def async_start(self) -> None:
         """Start optional push updates after the first REST refresh."""
@@ -74,11 +99,29 @@ class LumaForgeCoordinator(DataUpdateCoordinator[LumaForgeData]):
         """Apply validated event payloads or refresh the affected resource."""
         event_type = event.get("type")
         if event_type == "disconnected":
+            was_connected = self._websocket_connected
+            self._websocket_connected = False
             self.zone_states.clear()
+            self.automation_state = None
+            self.automation_state_received_at = None
             self.async_update_listeners()
+            if was_connected:
+                await self.async_request_refresh()
             return
         if event_type == "connected":
+            self._websocket_connected = True
+            self.automation_state = None
+            self.automation_state_received_at = None
             await self.async_request_refresh()
+            return
+        if event_type == "automation.state":
+            try:
+                self.automation_state = parse_automation_state(event)
+            except LumaForgeError as err:
+                _LOGGER.debug("Ignoring invalid automation state: %s", err)
+                return
+            self.automation_state_received_at = datetime.now(UTC)
+            self.async_update_listeners()
             return
         updates = {
             "layout.updated": ("layout", parse_layout, self.client.async_get_layout),

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from dataclasses import replace
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -22,6 +23,10 @@ INFO = LumaForgeInfo(
     ip_address="192.168.2.123",
     rssi=-55,
     capabilities=("led_output", "scenes", "zones"),
+)
+SEQUENCE_INFO = replace(
+    INFO,
+    capabilities=(*INFO.capabilities, "automations", "automation_sequences"),
 )
 STATUS = LumaForgeStatus(
     connected=True,

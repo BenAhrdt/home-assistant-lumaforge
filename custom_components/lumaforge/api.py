@@ -78,12 +78,35 @@ class LumaForgeZone:
 
 
 @dataclass(frozen=True, slots=True)
+class LumaForgeAutomationStep:
+    """One scene step in a device-internal automation sequence."""
+
+    scene_id: str
+    advance: str
+    duration_seconds: float | None
+
+
+@dataclass(frozen=True, slots=True)
 class LumaForgeAutomation:
     automation_id: str
     name: str
     scene_id: str | None
     enabled: bool | None
     raw: dict[str, Any] = field(compare=False)
+    steps: tuple[LumaForgeAutomationStep, ...] = ()
+    trigger: str | None = None
+    time: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class LumaForgeAutomationState:
+    """Authoritative automation runtime state received over WebSocket."""
+
+    state: str
+    automation_id: str | None
+    step_index: int | None
+    scene_id: str | None
+    elapsed_seconds: float
 
 
 @dataclass(frozen=True, slots=True)
@@ -193,16 +216,84 @@ def parse_automations(payload: Any) -> tuple[LumaForgeAutomation, ...]:
     for item in _object_list(payload, "automations"):
         item_id = _stable_id(item, "automation")
         enabled = item.get("enabled")
+        raw_steps = item.get("steps")
+        if raw_steps is None:
+            legacy_scene_id = _optional_str(item.get("sceneId"))
+            raw_steps = (
+                [{"sceneId": legacy_scene_id, "advance": "manual"}]
+                if legacy_scene_id is not None
+                else []
+            )
+        if not isinstance(raw_steps, list):
+            raise LumaForgeInvalidResponseError("automation steps must be an array")
+        steps = []
+        for raw_step in raw_steps:
+            if not isinstance(raw_step, dict):
+                raise LumaForgeInvalidResponseError("automation step must be an object")
+            scene_id = _optional_str(raw_step.get("sceneId"))
+            advance = _optional_str(raw_step.get("advance"))
+            if scene_id is None or advance not in (
+                "scene_finished",
+                "after_delay",
+                "manual",
+            ):
+                raise LumaForgeInvalidResponseError("automation step is invalid")
+            duration = _optional_float(raw_step.get("durationSeconds"))
+            if advance == "after_delay" and (duration is None or duration <= 0):
+                raise LumaForgeInvalidResponseError(
+                    "after_delay requires a positive durationSeconds"
+                )
+            steps.append(
+                LumaForgeAutomationStep(
+                    scene_id,
+                    advance,
+                    duration if advance == "after_delay" else None,
+                )
+            )
+        if not steps:
+            raise LumaForgeInvalidResponseError(
+                f"Automation {item_id!r} has no usable steps"
+            )
         result.append(
             LumaForgeAutomation(
                 item_id,
                 _optional_str(item.get("name")) or item_id,
-                _optional_str(item.get("sceneId")),
+                steps[0].scene_id,
                 enabled if isinstance(enabled, bool) else None,
                 dict(item),
+                tuple(steps),
+                _optional_str(item.get("trigger")),
+                _optional_str(item.get("time")),
             )
         )
     return tuple(result)
+
+
+def parse_automation_state(payload: Any) -> LumaForgeAutomationState:
+    """Validate an automation.state WebSocket payload."""
+    if not isinstance(payload, dict) or payload.get("type") != "automation.state":
+        raise LumaForgeInvalidResponseError("Invalid automation state message")
+    state = _optional_str(payload.get("state"))
+    if state not in ("running", "stopped"):
+        raise LumaForgeInvalidResponseError("Invalid automation state")
+    elapsed = _optional_float(payload.get("elapsedSeconds"))
+    if elapsed is None or elapsed < 0:
+        raise LumaForgeInvalidResponseError("Invalid automation elapsedSeconds")
+    if state == "stopped":
+        return LumaForgeAutomationState("stopped", None, None, None, elapsed)
+    automation_id = _optional_str(payload.get("automationId"))
+    step_index = _optional_int(payload.get("stepIndex"))
+    scene_id = _optional_str(payload.get("sceneId"))
+    if (
+        automation_id is None
+        or step_index is None
+        or step_index < 0
+        or scene_id is None
+    ):
+        raise LumaForgeInvalidResponseError("Incomplete running automation state")
+    return LumaForgeAutomationState(
+        "running", automation_id, step_index, scene_id, elapsed
+    )
 
 
 def _walk_layout(value: Any) -> Iterable[JsonObject]:
@@ -524,6 +615,20 @@ class LumaForgeApiClient:
 
     async def async_stop_scene(self) -> None:
         await self._send_command({"type": "scene.stop"})
+
+    async def async_start_automation(self, automation_id: str) -> None:
+        """Start a complete device-side automation sequence."""
+        await self._send_command(
+            {"type": "automation.start", "automationId": automation_id}
+        )
+
+    async def async_stop_automation(self) -> None:
+        """Stop the active device-side automation sequence."""
+        await self._send_command({"type": "automation.stop"})
+
+    async def async_next_automation_step(self) -> None:
+        """Advance the active sequence immediately."""
+        await self._send_command({"type": "automation.next"})
 
     async def async_set_preview(
         self,

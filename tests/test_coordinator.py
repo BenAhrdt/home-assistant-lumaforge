@@ -10,14 +10,16 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from custom_components.lumaforge.api import (
+    LumaForgeAutomationState,
     LumaForgeConnectionError,
     LumaForgeData,
     LumaForgeScene,
     parse_automations,
 )
+from custom_components.lumaforge.const import OFFLINE_UPDATE_INTERVAL, UPDATE_INTERVAL
 from custom_components.lumaforge.coordinator import LumaForgeCoordinator
 
-from .conftest import INFO, STATUS
+from .conftest import INFO, SEQUENCE_INFO, STATUS
 
 
 async def test_coordinator_update(hass: HomeAssistant) -> None:
@@ -37,6 +39,44 @@ async def test_coordinator_unavailable(hass: HomeAssistant) -> None:
     coordinator = LumaForgeCoordinator(hass, client)
     with pytest.raises(UpdateFailed):
         await coordinator._async_update_data()
+    assert coordinator.update_interval == OFFLINE_UPDATE_INTERVAL
+
+
+async def test_offline_probe_then_complete_recovery(hass: HomeAssistant) -> None:
+    """Probe only info while offline and reload everything after it returns."""
+    client = MagicMock()
+    client.async_get_info = AsyncMock(side_effect=[LumaForgeConnectionError, INFO])
+    client.async_get_data = AsyncMock(
+        side_effect=[LumaForgeConnectionError, LumaForgeData(INFO, STATUS)]
+    )
+    coordinator = LumaForgeCoordinator(hass, client)
+
+    with pytest.raises(UpdateFailed):
+        await coordinator._async_update_data()
+    with pytest.raises(UpdateFailed):
+        await coordinator._async_update_data()
+    client.async_get_data.assert_awaited_once()
+
+    data = await coordinator._async_update_data()
+    assert data.info.device_id == INFO.device_id
+    assert client.async_get_info.await_count == 2
+    assert client.async_get_data.await_count == 2
+    assert coordinator.update_interval == UPDATE_INTERVAL
+
+
+async def test_established_websocket_disconnect_triggers_probe(
+    hass: HomeAssistant,
+) -> None:
+    client = MagicMock()
+    client.async_get_data = AsyncMock(return_value=LumaForgeData(INFO, STATUS))
+    coordinator = LumaForgeCoordinator(hass, client)
+    coordinator.async_set_updated_data(LumaForgeData(INFO, STATUS))
+
+    await coordinator._async_websocket_event({"type": "connected"})
+    client.async_get_data.reset_mock()
+    await coordinator._async_websocket_event({"type": "disconnected"})
+
+    client.async_get_data.assert_awaited_once()
 
 
 async def test_websocket_update_with_payload(hass: HomeAssistant) -> None:
@@ -95,6 +135,58 @@ async def test_websocket_update_without_payload(hass: HomeAssistant) -> None:
 
     assert coordinator.data.scenes[0].scene_id == "fresh"
     client.async_get_scenes.assert_awaited_once()
+
+
+async def test_authoritative_automation_state_and_reconnect(
+    hass: HomeAssistant,
+) -> None:
+    client = MagicMock()
+    client.async_get_data = AsyncMock(return_value=LumaForgeData(SEQUENCE_INFO, STATUS))
+    coordinator = LumaForgeCoordinator(hass, client)
+    coordinator.async_set_updated_data(LumaForgeData(SEQUENCE_INFO, STATUS))
+
+    await coordinator._async_websocket_event(
+        {
+            "type": "automation.state",
+            "state": "running",
+            "automationId": "auto",
+            "stepIndex": 0,
+            "sceneId": "scene",
+            "elapsedSeconds": 1.5,
+        }
+    )
+
+    assert coordinator.automation_state == LumaForgeAutomationState(
+        "running", "auto", 0, "scene", 1.5
+    )
+    assert coordinator.automation_state_received_at is not None
+
+    await coordinator._async_websocket_event(
+        {"type": "automation.state", "state": "stopped", "elapsedSeconds": 0}
+    )
+    assert coordinator.automation_state == LumaForgeAutomationState(
+        "stopped", None, None, None, 0
+    )
+
+    await coordinator._async_websocket_event({"type": "disconnected"})
+    assert coordinator.automation_state is None
+    assert coordinator.automation_state_received_at is None
+
+    await coordinator._async_websocket_event({"type": "connected"})
+    assert coordinator.automation_state is None
+    client.async_get_data.assert_awaited_once()
+
+    await coordinator._async_websocket_event(
+        {
+            "type": "automation.state",
+            "state": "running",
+            "automationId": "auto",
+            "stepIndex": 1,
+            "sceneId": "other",
+            "elapsedSeconds": 0,
+        }
+    )
+    assert coordinator.automation_state.scene_id == "other"
 
 
 async def test_parallel_automation_updates_preserve_changes(

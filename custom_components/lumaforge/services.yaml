@@ -112,3 +112,30 @@ apply_to_zone:
     effect: *effect
     speed: *speed
     direction: *direction
+
+start_automation:
+  name: Start automation
+  description: Start a complete device-side automation sequence.
+  fields:
+    config_entry_id: *entry
+    device_id: *device
+    automation_id:
+      name: Automation ID
+      description: Stable ID of the stored device automation.
+      required: true
+      selector:
+        text:
+
+stop_automation:
+  name: Stop automation
+  description: Stop the currently active device-side automation sequence.
+  fields:
+    config_entry_id: *entry
+    device_id: *device
+
+next_automation_step:
+  name: Next automation step
+  description: End the current step and immediately start the next step.
+  fields:
+    config_entry_id: *entry
+    device_id: *device

@@ -8,16 +8,23 @@ from homeassistant.components.light import LightEntityFeature
 
 from custom_components.lumaforge.api import (
     LumaForgeAutomation,
+    LumaForgeAutomationState,
+    LumaForgeAutomationStep,
     LumaForgeData,
     LumaForgeScene,
     LumaForgeZone,
 )
-from custom_components.lumaforge.button import LumaForgeAutomationButton
+from custom_components.lumaforge.button import (
+    LumaForgeAutomationButton,
+    LumaForgeNextAutomationButton,
+    LumaForgeStopAutomationButton,
+)
 from custom_components.lumaforge.dynamic import async_sync_entities
 from custom_components.lumaforge.light import LumaForgeZoneLight
 from custom_components.lumaforge.scene import LumaForgeSceneEntity
+from custom_components.lumaforge.sensor import LumaForgeAutomationStatusSensor
 
-from .conftest import INFO, STATUS
+from .conftest import INFO, SEQUENCE_INFO, STATUS
 
 
 def control_entry(data: LumaForgeData) -> MagicMock:
@@ -28,7 +35,12 @@ def control_entry(data: LumaForgeData) -> MagicMock:
     entry.runtime_data.client.websocket_connected = True
     entry.runtime_data.client.async_play_scene = AsyncMock()
     entry.runtime_data.client.async_set_preview = AsyncMock()
+    entry.runtime_data.client.async_start_automation = AsyncMock()
+    entry.runtime_data.client.async_stop_automation = AsyncMock()
+    entry.runtime_data.client.async_next_automation_step = AsyncMock()
     entry.runtime_data.zone_states = {}
+    entry.runtime_data.automation_state = None
+    entry.runtime_data.automation_state_received_at = None
     entry.runtime_data.set_zone_optimistic_state = MagicMock()
     return entry
 
@@ -64,9 +76,16 @@ async def test_zone_light_uses_zone_selection() -> None:
     entry.runtime_data.set_zone_optimistic_state.assert_called_once()
 
 
-async def test_automation_button_plays_scene() -> None:
+async def test_automation_button_starts_native_sequence() -> None:
     scene = LumaForgeScene("scene", "Scene", (), {})
-    automation = LumaForgeAutomation("auto", "Timer", "scene", False, {})
+    automation = LumaForgeAutomation(
+        "auto",
+        "Timer",
+        "scene",
+        False,
+        {},
+        (LumaForgeAutomationStep("scene", "manual", None),),
+    )
     entry = control_entry(
         LumaForgeData(INFO, STATUS, scenes=(scene,), automations=(automation,))
     )
@@ -74,7 +93,49 @@ async def test_automation_button_plays_scene() -> None:
 
     await entity.async_press()
 
-    entry.runtime_data.client.async_play_scene.assert_awaited_once_with("scene")
+    assert entity.unique_id.endswith("_auto_start")
+    entry.runtime_data.client.async_start_automation.assert_awaited_once_with("auto")
+
+
+async def test_automation_runtime_controls_and_status() -> None:
+    scenes = (
+        LumaForgeScene("one", "First scene", (), {}),
+        LumaForgeScene("two", "Second scene", (), {}),
+    )
+    automation = LumaForgeAutomation(
+        "auto",
+        "Sequence",
+        "one",
+        True,
+        {},
+        (
+            LumaForgeAutomationStep("one", "scene_finished", None),
+            LumaForgeAutomationStep("two", "after_delay", 5),
+        ),
+    )
+    entry = control_entry(
+        LumaForgeData(SEQUENCE_INFO, STATUS, scenes=scenes, automations=(automation,))
+    )
+    entry.runtime_data.automation_state = LumaForgeAutomationState(
+        "running", "auto", 1, "two", 2.5
+    )
+    stop = LumaForgeStopAutomationButton(entry)
+    next_step = LumaForgeNextAutomationButton(entry)
+    status = LumaForgeAutomationStatusSensor(entry)
+
+    assert stop.available
+    assert next_step.available
+    assert status.native_value == "running"
+    assert status.extra_state_attributes["automation_name"] == "Sequence"
+    assert status.extra_state_attributes["scene_name"] == "Second scene"
+    assert status.extra_state_attributes["step_number"] == 2
+    assert status.extra_state_attributes["step_count"] == 2
+    assert status.extra_state_attributes["duration_seconds"] == 5
+
+    await stop.async_press()
+    await next_step.async_press()
+    entry.runtime_data.client.async_stop_automation.assert_awaited_once()
+    entry.runtime_data.client.async_next_automation_step.assert_awaited_once()
 
 
 async def test_dynamic_add_remove_without_duplicates(hass) -> None:

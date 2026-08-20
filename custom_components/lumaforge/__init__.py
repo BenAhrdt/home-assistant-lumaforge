@@ -28,13 +28,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: LumaForgeConfigEntry) ->
     domain_data = hass.data.setdefault(DOMAIN, {})
     coordinators = domain_data.setdefault(DATA_COORDINATORS, {})
     coordinators[entry.entry_id] = coordinator
-    if "layout" in client.supported_resources:
-        await async_setup_services(hass)
+    await async_setup_services(hass)
     coordinator.loaded_platforms = coordinator.platforms
     await hass.config_entries.async_forward_entry_setups(
         entry, coordinator.loaded_platforms
     )
-    if client.supported_resources & {"scenes", "zones", "automations"}:
+    if coordinator.supports_automation_sequences or client.supported_resources & {
+        "scenes",
+        "zones",
+        "automations",
+    }:
         await coordinator.async_start()
     return True
 
@@ -48,10 +51,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: LumaForgeConfigEntry) -
     await entry.runtime_data.async_shutdown()
     coordinators = hass.data[DOMAIN][DATA_COORDINATORS]
     coordinators.pop(entry.entry_id, None)
-    if not any(
-        "layout" in item.client.supported_resources for item in coordinators.values()
-    ):
-        async_unload_services(hass)
     if not coordinators:
+        async_unload_services(hass)
         hass.data.pop(DOMAIN)
     return True

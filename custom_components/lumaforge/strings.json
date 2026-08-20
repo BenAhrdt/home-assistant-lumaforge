@@ -22,6 +22,8 @@
   },
   "entity": {
     "button": {
+      "next_automation_step": { "name": "Next automation step" },
+      "stop_automation": { "name": "Stop automation" },
       "stop_scene": { "name": "Stop scene" }
     },
     "binary_sensor": {
@@ -29,6 +31,7 @@
     },
     "sensor": {
       "api_version": { "name": "API version" },
+      "automation_status": { "name": "Automation status" },
       "capabilities": { "name": "Capabilities" },
       "cpu_usage": { "name": "CPU usage" },
       "device_id": { "name": "Device ID" },
@@ -55,6 +58,18 @@
     "apply_to_zone": {
       "name": "Apply to zone",
       "description": "Set all LEDs in a stored zone"
+    },
+    "start_automation": {
+      "name": "Start automation",
+      "description": "Start a complete device-side automation sequence"
+    },
+    "stop_automation": {
+      "name": "Stop automation",
+      "description": "Stop the active device-side automation sequence"
+    },
+    "next_automation_step": {
+      "name": "Next automation step",
+      "description": "Immediately advance the active automation sequence"
     }
   }
 }

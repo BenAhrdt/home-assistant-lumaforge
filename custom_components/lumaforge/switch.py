@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import LumaForgeConfigEntry
@@ -17,6 +18,15 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     known: dict[str, LumaForgeAutomationSwitch] = {}
+    registry = er.async_get(hass)
+    for automation in entry.runtime_data.data.automations:
+        old_entity_id = registry.async_get_entity_id(
+            "switch",
+            "lumaforge",
+            f"{entry.unique_id}_automation_{automation.automation_id}_enabled",
+        )
+        if old_entity_id is not None:
+            registry.async_remove(old_entity_id)
 
     async def sync() -> None:
         await async_sync_entities(
@@ -41,7 +51,7 @@ class LumaForgeAutomationSwitch(LumaForgeEntity, SwitchEntity):
     """Persist an automation's enabled field through the full-list endpoint."""
 
     def __init__(self, entry: LumaForgeConfigEntry, automation_id: str) -> None:
-        super().__init__(entry, f"automation_{automation_id}_enabled")
+        super().__init__(entry, f"{automation_id}_enabled")
         self.automation_id = automation_id
 
     @property

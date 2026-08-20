@@ -55,9 +55,10 @@ def test_missing_optional_values() -> None:
     assert connectivity.is_on is True
 
 
-def test_entity_unavailable_after_failed_update() -> None:
-    """Coordinator failure makes entities unavailable."""
+def test_connectivity_reports_disconnected_after_failed_update() -> None:
+    """The connectivity entity stays available to report an outage."""
     entry = entry_with_data(LumaForgeData(INFO, STATUS))
     entry.runtime_data.last_update_success = False
     entity = LumaForgeConnectivitySensor(entry)
-    assert entity.available is False
+    assert entity.available is True
+    assert entity.is_on is False
