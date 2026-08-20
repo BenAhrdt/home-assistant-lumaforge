@@ -50,12 +50,13 @@ async def test_scene_rename_keeps_identity_and_activates() -> None:
     entry = control_entry(LumaForgeData(INFO, STATUS, scenes=(scene,)))
     entity = LumaForgeSceneEntity(entry, scene.scene_id)
     assert entity.unique_id.endswith("scene_stable")
-    assert entity.name == "Old name"
+    assert entity.translation_key == "stored_scene"
+    assert entity.translation_placeholders == {"name": "Old name"}
 
     entry.runtime_data.data = LumaForgeData(
         INFO, STATUS, scenes=(LumaForgeScene("stable", "New name", (), {}),)
     )
-    assert entity.name == "New name"
+    assert entity.translation_placeholders == {"name": "New name"}
     await entity.async_activate()
     entry.runtime_data.client.async_play_scene.assert_awaited_once_with("stable")
 
@@ -65,6 +66,7 @@ async def test_zone_light_uses_zone_selection() -> None:
     entry = control_entry(LumaForgeData(INFO, STATUS, zones=(zone,)))
     entity = LumaForgeZoneLight(entry, zone.zone_id)
 
+    assert entity.translation_placeholders == {"name": "Bench"}
     assert entity.supported_features == LightEntityFeature.EFFECT
     assert entity.effect_list == ["solid", "blink", "pulse", "wipe", "chase", "rainbow"]
 
@@ -91,6 +93,7 @@ async def test_automation_button_starts_native_sequence() -> None:
     )
     entity = LumaForgeAutomationButton(entry, automation.automation_id)
 
+    assert entity.translation_placeholders == {"name": "Timer"}
     await entity.async_press()
 
     assert entity.unique_id.endswith("_auto_start")

@@ -74,6 +74,8 @@ class LumaForgeStopSceneButton(LumaForgeControlButton):
 
 
 class LumaForgeAutomationButton(LumaForgeControlButton):
+    _attr_translation_key = "automation_start"
+
     def __init__(self, entry: LumaForgeConfigEntry, automation_id: str) -> None:
         super().__init__(entry, f"{automation_id}_start")
         self.automation_id = automation_id
@@ -90,10 +92,8 @@ class LumaForgeAutomationButton(LumaForgeControlButton):
         )
 
     @property
-    def name(self) -> str:
-        return (
-            f"{self.automation.name if self.automation else self.automation_id} start"
-        )
+    def translation_placeholders(self) -> dict[str, str]:
+        return {"name": self.automation.name if self.automation else self.automation_id}
 
     @property
     def extra_state_attributes(self) -> dict[str, object]:

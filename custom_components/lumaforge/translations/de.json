@@ -19,14 +19,15 @@
   },
   "entity": {
     "button": {
-      "next_automation_step": { "name": "Nächster Automationsschritt" },
-      "stop_automation": { "name": "Automation stoppen" },
-      "stop_scene": { "name": "Szene stoppen" }
+      "automation_start": { "name": "Automation – {name} starten" },
+      "next_automation_step": { "name": "Automation – Nächster Schritt" },
+      "stop_automation": { "name": "Automation – Stoppen" },
+      "stop_scene": { "name": "Szene – Stoppen" }
     },
     "binary_sensor": { "connectivity": { "name": "Verbindung" } },
     "sensor": {
       "api_version": { "name": "API-Version" },
-      "automation_status": { "name": "Automationsstatus" },
+      "automation_status": { "name": "Automation – Status" },
       "capabilities": { "name": "Fähigkeiten" },
       "cpu_usage": { "name": "CPU-Auslastung" }, "device_id": { "name": "Geräte-ID" },
       "device_name": { "name": "Gerätename" }, "firmware_version": { "name": "Firmwareversion" },
@@ -34,6 +35,11 @@
       "memory_total": { "name": "Gesamtspeicher" }, "memory_usage": { "name": "Speicherauslastung" },
       "memory_used": { "name": "Verwendeter Speicher" }, "model": { "name": "Modell" },
       "wifi_signal": { "name": "WLAN-Signalstärke" }
+    },
+    "light": { "zone": { "name": "Zone – {name}" } },
+    "scene": { "stored_scene": { "name": "Szene – {name}" } },
+    "switch": {
+      "automation_enabled": { "name": "Automation – {name} aktiviert" }
     }
   },
   "services": {

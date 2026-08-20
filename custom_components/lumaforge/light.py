@@ -50,6 +50,7 @@ class LumaForgeZoneLight(LumaForgeEntity, LightEntity):
     _attr_supported_color_modes = {ColorMode.RGB}
     _attr_supported_features = LightEntityFeature.EFFECT
     _attr_effect_list = list(EFFECTS)
+    _attr_translation_key = "zone"
 
     def __init__(self, entry: LumaForgeConfigEntry, zone_id: str) -> None:
         super().__init__(entry, f"zone_{zone_id}")
@@ -91,8 +92,8 @@ class LumaForgeZoneLight(LumaForgeEntity, LightEntity):
         )
 
     @property
-    def name(self) -> str:
-        return self.zone.name if self.zone else self.zone_id
+    def translation_placeholders(self) -> dict[str, str]:
+        return {"name": self.zone.name if self.zone else self.zone_id}
 
     @property
     def available(self) -> bool:

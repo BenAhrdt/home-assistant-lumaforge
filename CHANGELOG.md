@@ -6,6 +6,13 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-08-20
+
+### Changed
+
+- Prefix scene, zone and automation entity names with their type so related
+  controls sort together on Home Assistant's generated device page.
+
 ## [0.3.0] - 2026-08-20
 
 ### Added
@@ -87,7 +94,8 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   are used.
 - Downloaded diagnostics redact IP addresses and hostnames.
 
-[Unreleased]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.1.3...v0.2.0
 [0.1.3]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.1.2...v0.1.3

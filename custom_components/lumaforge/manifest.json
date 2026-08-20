@@ -8,6 +8,6 @@
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/BenAhrdt/home-assistant-lumaforge/issues",
   "requirements": [],
-  "version": "0.3.0",
+  "version": "0.3.1",
   "zeroconf": ["_lumaforge._tcp.local."]
 }

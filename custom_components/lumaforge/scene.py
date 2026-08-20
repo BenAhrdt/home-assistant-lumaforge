@@ -36,12 +36,14 @@ async def async_setup_entry(
 class LumaForgeSceneEntity(LumaForgeEntity, Scene):
     """Represent a scene stored on LumaForge."""
 
+    _attr_translation_key = "stored_scene"
+
     def __init__(self, entry: LumaForgeConfigEntry, scene_id: str) -> None:
         super().__init__(entry, f"scene_{scene_id}")
         self.scene_id = scene_id
 
     @property
-    def name(self) -> str:
+    def translation_placeholders(self) -> dict[str, str]:
         scene = next(
             (
                 item
@@ -50,7 +52,7 @@ class LumaForgeSceneEntity(LumaForgeEntity, Scene):
             ),
             None,
         )
-        return scene.name if scene else self.scene_id
+        return {"name": scene.name if scene else self.scene_id}
 
     @property
     def available(self) -> bool:

@@ -6,7 +6,7 @@ devices via `_lumaforge._tcp.local.`, verifies their identity through
 device-internal automations through the local REST and WebSocket APIs. No
 account, cloud service, authentication, or YAML configuration is used.
 
-Current integration version: **0.3.0**. Release history is available in the
+Current integration version: **0.3.1**. Release history is available in the
 [changelog](CHANGELOG.md).
 
 ## Requirements

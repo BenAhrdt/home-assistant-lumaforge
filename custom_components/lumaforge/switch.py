@@ -50,6 +50,8 @@ async def async_setup_entry(
 class LumaForgeAutomationSwitch(LumaForgeEntity, SwitchEntity):
     """Persist an automation's enabled field through the full-list endpoint."""
 
+    _attr_translation_key = "automation_enabled"
+
     def __init__(self, entry: LumaForgeConfigEntry, automation_id: str) -> None:
         super().__init__(entry, f"{automation_id}_enabled")
         self.automation_id = automation_id
@@ -66,9 +68,9 @@ class LumaForgeAutomationSwitch(LumaForgeEntity, SwitchEntity):
         )
 
     @property
-    def name(self) -> str:
+    def translation_placeholders(self) -> dict[str, str]:
         name = self.automation.name if self.automation else self.automation_id
-        return f"{name} enabled"
+        return {"name": name}
 
     @property
     def is_on(self) -> bool | None:
