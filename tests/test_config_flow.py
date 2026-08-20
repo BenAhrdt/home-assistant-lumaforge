@@ -43,6 +43,7 @@ async def test_zeroconf_success(
     )
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "confirm"
+    assert result["description_placeholders"] == {"name": "Garage"}
     result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["result"].unique_id == "lf-51bf60200d1e"

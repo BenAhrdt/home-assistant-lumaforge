@@ -79,8 +79,12 @@ class LumaForgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_create_entry(
                 title=self._info.device_name, data=self._discovered
             )
+        assert self._info is not None
         self._set_confirm_only()
-        return self.async_show_form(step_id="confirm")
+        return self.async_show_form(
+            step_id="confirm",
+            description_placeholders={"name": self._info.device_name},
+        )
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
