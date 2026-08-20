@@ -1,0 +1,36 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "Gerät ist bereits konfiguriert",
+      "cannot_connect": "Verbindung zum Gerät fehlgeschlagen",
+      "id_mismatch": "Die erkannte Geräte-ID stimmt nicht mit der API-Antwort überein",
+      "invalid_response": "Das Gerät hat eine ungültige Antwort zurückgegeben",
+      "unsupported_api": "Das Gerät verwendet eine nicht unterstützte API-Version"
+    },
+    "error": {
+      "cannot_connect": "Verbindung zum Gerät fehlgeschlagen",
+      "invalid_response": "Das Gerät hat eine ungültige Antwort zurückgegeben",
+      "unsupported_api": "Das Gerät verwendet eine nicht unterstützte API-Version"
+    },
+    "step": {
+      "confirm": { "description": "Möchtest du {name} hinzufügen?", "title": "LumaForge-Gerät erkannt" },
+      "user": {
+        "data": { "host": "Hostname oder IP-Adresse", "port": "Port" },
+        "description": "Gib die lokale Adresse des LumaForge-Geräts ein.",
+        "title": "LumaForge hinzufügen"
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": { "connectivity": { "name": "Verbindung" } },
+    "sensor": {
+      "api_version": { "name": "API-Version" }, "capabilities": { "name": "Fähigkeiten" },
+      "cpu_usage": { "name": "CPU-Auslastung" }, "device_id": { "name": "Geräte-ID" },
+      "device_name": { "name": "Gerätename" }, "firmware_version": { "name": "Firmwareversion" },
+      "hostname": { "name": "Hostname" }, "ip_address": { "name": "IP-Adresse" },
+      "memory_total": { "name": "Gesamtspeicher" }, "memory_usage": { "name": "Speicherauslastung" },
+      "memory_used": { "name": "Verwendeter Speicher" }, "model": { "name": "Modell" },
+      "wifi_signal": { "name": "WLAN-Signalstärke" }
+    }
+  }
+}

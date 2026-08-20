@@ -1,0 +1,50 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "Device is already configured",
+      "cannot_connect": "Unable to connect to the device",
+      "id_mismatch": "The discovered device ID does not match the API response",
+      "invalid_response": "The device returned an invalid response",
+      "unsupported_api": "The device uses an unsupported API version"
+    },
+    "error": {
+      "cannot_connect": "Unable to connect to the device",
+      "invalid_response": "The device returned an invalid response",
+      "unsupported_api": "The device uses an unsupported API version"
+    },
+    "step": {
+      "confirm": {
+        "description": "Do you want to add {name}?",
+        "title": "Discover LumaForge device"
+      },
+      "user": {
+        "data": {
+          "host": "Host or IP address",
+          "port": "Port"
+        },
+        "description": "Enter the local address of the LumaForge device.",
+        "title": "Add LumaForge"
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "connectivity": { "name": "Connectivity" }
+    },
+    "sensor": {
+      "api_version": { "name": "API version" },
+      "capabilities": { "name": "Capabilities" },
+      "cpu_usage": { "name": "CPU usage" },
+      "device_id": { "name": "Device ID" },
+      "device_name": { "name": "Device name" },
+      "firmware_version": { "name": "Firmware version" },
+      "hostname": { "name": "Hostname" },
+      "ip_address": { "name": "IP address" },
+      "memory_total": { "name": "Total memory" },
+      "memory_usage": { "name": "Memory usage" },
+      "memory_used": { "name": "Used memory" },
+      "model": { "name": "Model" },
+      "wifi_signal": { "name": "Wi-Fi signal strength" }
+    }
+  }
+}
