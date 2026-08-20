@@ -14,9 +14,9 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.const import (
     PERCENTAGE,
+    SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
     EntityCategory,
     UnitOfInformation,
-    UnitOfSignalStrength,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
@@ -39,7 +39,7 @@ SENSORS: tuple[LumaForgeSensorDescription, ...] = (
         key="wifi_signal",
         translation_key="wifi_signal",
         device_class=SensorDeviceClass.SIGNAL_STRENGTH,
-        native_unit_of_measurement=UnitOfSignalStrength.DECIBELS_MILLIWATT,
+        native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: (
