@@ -19,10 +19,12 @@ from homeassistant.const import (
     UnitOfInformation,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import LumaForgeConfigEntry
 from .api import LumaForgeData
+from .const import DOMAIN
 from .entity import LumaForgeEntity
 
 
@@ -51,6 +53,7 @@ SENSORS: tuple[LumaForgeSensorDescription, ...] = (
         translation_key="cpu_usage",
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=0,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.status.cpu_percent,
     ),
@@ -59,8 +62,9 @@ SENSORS: tuple[LumaForgeSensorDescription, ...] = (
         translation_key="memory_used",
         device_class=SensorDeviceClass.DATA_SIZE,
         native_unit_of_measurement=UnitOfInformation.BYTES,
+        suggested_unit_of_measurement=UnitOfInformation.KILOBYTES,
         state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=0,
+        suggested_display_precision=2,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.status.memory_used_bytes,
     ),
@@ -69,8 +73,9 @@ SENSORS: tuple[LumaForgeSensorDescription, ...] = (
         translation_key="memory_total",
         device_class=SensorDeviceClass.DATA_SIZE,
         native_unit_of_measurement=UnitOfInformation.BYTES,
+        suggested_unit_of_measurement=UnitOfInformation.KILOBYTES,
         state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=0,
+        suggested_display_precision=2,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.status.memory_total_bytes,
     ),
@@ -79,7 +84,7 @@ SENSORS: tuple[LumaForgeSensorDescription, ...] = (
         translation_key="memory_usage",
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=1,
+        suggested_display_precision=0,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: (
             round(
@@ -95,7 +100,8 @@ SENSORS: tuple[LumaForgeSensorDescription, ...] = (
         translation_key="flash_chip_size",
         device_class=SensorDeviceClass.DATA_SIZE,
         native_unit_of_measurement=UnitOfInformation.BYTES,
-        suggested_display_precision=0,
+        suggested_unit_of_measurement=UnitOfInformation.MEGABYTES,
+        suggested_display_precision=2,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.status.flash_chip_size_bytes,
     ),
@@ -104,7 +110,8 @@ SENSORS: tuple[LumaForgeSensorDescription, ...] = (
         translation_key="firmware_used",
         device_class=SensorDeviceClass.DATA_SIZE,
         native_unit_of_measurement=UnitOfInformation.BYTES,
-        suggested_display_precision=0,
+        suggested_unit_of_measurement=UnitOfInformation.MEGABYTES,
+        suggested_display_precision=2,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.status.firmware_used_bytes,
     ),
@@ -113,7 +120,8 @@ SENSORS: tuple[LumaForgeSensorDescription, ...] = (
         translation_key="firmware_capacity",
         device_class=SensorDeviceClass.DATA_SIZE,
         native_unit_of_measurement=UnitOfInformation.BYTES,
-        suggested_display_precision=0,
+        suggested_unit_of_measurement=UnitOfInformation.MEGABYTES,
+        suggested_display_precision=2,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.status.firmware_capacity_bytes,
     ),
@@ -122,7 +130,8 @@ SENSORS: tuple[LumaForgeSensorDescription, ...] = (
         translation_key="firmware_free",
         device_class=SensorDeviceClass.DATA_SIZE,
         native_unit_of_measurement=UnitOfInformation.BYTES,
-        suggested_display_precision=0,
+        suggested_unit_of_measurement=UnitOfInformation.MEGABYTES,
+        suggested_display_precision=2,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.status.firmware_free_bytes,
     ),
@@ -131,7 +140,7 @@ SENSORS: tuple[LumaForgeSensorDescription, ...] = (
         translation_key="firmware_usage",
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=1,
+        suggested_display_precision=0,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: (
             round(
@@ -150,7 +159,8 @@ SENSORS: tuple[LumaForgeSensorDescription, ...] = (
         translation_key="filesystem_used",
         device_class=SensorDeviceClass.DATA_SIZE,
         native_unit_of_measurement=UnitOfInformation.BYTES,
-        suggested_display_precision=0,
+        suggested_unit_of_measurement=UnitOfInformation.KILOBYTES,
+        suggested_display_precision=2,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.status.filesystem_used_bytes,
     ),
@@ -159,7 +169,8 @@ SENSORS: tuple[LumaForgeSensorDescription, ...] = (
         translation_key="filesystem_total",
         device_class=SensorDeviceClass.DATA_SIZE,
         native_unit_of_measurement=UnitOfInformation.BYTES,
-        suggested_display_precision=0,
+        suggested_unit_of_measurement=UnitOfInformation.MEGABYTES,
+        suggested_display_precision=2,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.status.filesystem_total_bytes,
     ),
@@ -168,7 +179,7 @@ SENSORS: tuple[LumaForgeSensorDescription, ...] = (
         translation_key="filesystem_usage",
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=1,
+        suggested_display_precision=0,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: (
             round(
@@ -248,12 +259,38 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up LumaForge sensors."""
+    _migrate_suggested_units(hass, entry)
     entities: list[SensorEntity] = [
         LumaForgeSensor(entry, description) for description in SENSORS
     ]
     if entry.runtime_data.supports_automation_sequences:
         entities.append(LumaForgeAutomationStatusSensor(entry))
     async_add_entities(entities)
+
+
+def _migrate_suggested_units(hass: HomeAssistant, entry: LumaForgeConfigEntry) -> None:
+    """Update display-unit defaults without replacing user-selected units."""
+    registry = er.async_get(hass)
+    for description in SENSORS:
+        suggested_unit = description.suggested_unit_of_measurement
+        if suggested_unit is None:
+            continue
+        entity_id = registry.async_get_entity_id(
+            "sensor", DOMAIN, f"{entry.unique_id}_{description.key}"
+        )
+        if entity_id is None:
+            continue
+        registry_entry = registry.async_get(entity_id)
+        if registry_entry is None:
+            continue
+        sensor_options = registry_entry.options.get("sensor", {})
+        if "unit_of_measurement" in sensor_options:
+            continue
+        registry.async_update_entity_options(
+            entity_id,
+            "sensor.private",
+            {"suggested_unit_of_measurement": suggested_unit},
+        )
 
 
 class LumaForgeSensor(LumaForgeEntity, SensorEntity):

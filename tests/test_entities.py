@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import replace
 from unittest.mock import MagicMock
 
+from homeassistant.const import UnitOfInformation
+
 from custom_components.lumaforge.api import LumaForgeData, LumaForgeStatus
 from custom_components.lumaforge.binary_sensor import LumaForgeConnectivitySensor
 from custom_components.lumaforge.sensor import SENSORS, LumaForgeSensor
@@ -99,3 +101,31 @@ def test_flash_and_filesystem_usage_sensors() -> None:
         ).native_value
         is None
     )
+
+
+def test_diagnostic_display_defaults() -> None:
+    """Diagnostic values use compact, readable display defaults."""
+    descriptions = {description.key: description for description in SENSORS}
+
+    for key in ("cpu_usage", "memory_usage", "firmware_usage", "filesystem_usage"):
+        assert descriptions[key].suggested_display_precision == 0
+
+    for key in ("memory_used", "memory_total", "filesystem_used"):
+        assert (
+            descriptions[key].suggested_unit_of_measurement
+            == UnitOfInformation.KILOBYTES
+        )
+        assert descriptions[key].suggested_display_precision == 2
+
+    for key in (
+        "flash_chip_size",
+        "firmware_used",
+        "firmware_capacity",
+        "firmware_free",
+        "filesystem_total",
+    ):
+        assert (
+            descriptions[key].suggested_unit_of_measurement
+            == UnitOfInformation.MEGABYTES
+        )
+        assert descriptions[key].suggested_display_precision == 2

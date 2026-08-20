@@ -40,8 +40,8 @@
       "filesystem_total": { "name": "LittleFS gesamt" },
       "filesystem_usage": { "name": "LittleFS-Auslastung" },
       "hostname": { "name": "Hostname" }, "ip_address": { "name": "IP-Adresse" },
-      "memory_total": { "name": "Gesamtspeicher" }, "memory_usage": { "name": "Speicherauslastung" },
-      "memory_used": { "name": "Verwendeter Speicher" }, "model": { "name": "Modell" },
+      "memory_total": { "name": "RAM gesamt" }, "memory_usage": { "name": "RAM-Auslastung" },
+      "memory_used": { "name": "RAM belegt" }, "model": { "name": "Modell" },
       "wifi_signal": { "name": "WLAN-Signalstärke" }
     },
     "light": { "zone": { "name": "Zone – {name}" } },

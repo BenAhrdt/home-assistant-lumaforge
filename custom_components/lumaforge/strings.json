@@ -48,9 +48,9 @@
       "filesystem_usage": { "name": "LittleFS usage" },
       "hostname": { "name": "Hostname" },
       "ip_address": { "name": "IP address" },
-      "memory_total": { "name": "Total memory" },
-      "memory_usage": { "name": "Memory usage" },
-      "memory_used": { "name": "Used memory" },
+      "memory_total": { "name": "RAM total" },
+      "memory_usage": { "name": "RAM usage" },
+      "memory_used": { "name": "RAM used" },
       "model": { "name": "Model" },
       "wifi_signal": { "name": "Wi-Fi signal strength" }
     },
