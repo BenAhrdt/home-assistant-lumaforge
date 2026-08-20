@@ -5,7 +5,7 @@ devices via `_lumaforge._tcp.local.`, verifies their identity through
 `/api/v1/info`, and exposes useful read-only diagnostics. No account, cloud
 service, authentication, or YAML configuration is used.
 
-Current integration version: **0.1.0**. Release history is available in the
+Current integration version: **0.1.1**. Release history is available in the
 [changelog](CHANGELOG.md).
 
 ## Requirements

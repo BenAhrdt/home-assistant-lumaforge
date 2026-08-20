@@ -6,6 +6,13 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-08-20
+
+### Fixed
+
+- Use the current Home Assistant service-info import path so the config flow
+  loads on recent Home Assistant releases.
+
 ## [0.1.0] - 2026-08-20
 
 ### Added
@@ -32,5 +39,6 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   are used.
 - Downloaded diagnostics redact IP addresses and hostnames.
 
-[Unreleased]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/BenAhrdt/home-assistant-lumaforge/releases/tag/v0.1.0
