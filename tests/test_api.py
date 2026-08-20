@@ -16,6 +16,8 @@ from custom_components.lumaforge.api import (
     LumaForgeInvalidResponseError,
     parse_automation_state,
     parse_automations,
+    parse_status,
+    parse_update_status,
 )
 
 
@@ -67,6 +69,13 @@ async def test_diagnostic_endpoints_and_status_parsing() -> None:
                 "cpuPercent": "3.5",
                 "memoryUsedBytes": "100",
                 "memoryTotalBytes": 200,
+                "version": "0.2.0-alpha.4",
+                "flashChipSizeBytes": 4194304,
+                "firmwareUsedBytes": 1166144,
+                "firmwareFreeBytes": 144576,
+                "firmwareCapacityBytes": 1310720,
+                "filesystemUsedBytes": 12288,
+                "filesystemTotalBytes": 1441792,
             },
         ]
     )
@@ -83,6 +92,61 @@ async def test_diagnostic_endpoints_and_status_parsing() -> None:
     assert status.rssi == -61
     assert status.cpu_percent == 3.5
     assert status.memory_used_bytes == 100
+    assert status.version == "0.2.0-alpha.4"
+    assert status.flash_chip_size_bytes == 4194304
+    assert status.firmware_capacity_bytes == 1310720
+    assert status.filesystem_total_bytes == 1441792
+
+
+def test_simulator_null_storage_status() -> None:
+    status = parse_status(
+        {
+            "version": "sim",
+            "flashChipSizeBytes": None,
+            "firmwareUsedBytes": None,
+            "firmwareFreeBytes": None,
+            "firmwareCapacityBytes": None,
+            "filesystemUsedBytes": None,
+            "filesystemTotalBytes": None,
+        }
+    )
+    assert status.flash_chip_size_bytes is None
+    assert status.firmware_used_bytes is None
+    assert status.filesystem_total_bytes is None
+
+
+@pytest.mark.parametrize(
+    ("state", "progress", "error"),
+    [
+        ("idle", None, None),
+        ("checking", None, None),
+        ("available", None, None),
+        ("up_to_date", None, None),
+        ("downloading", 62, None),
+        ("installing", None, None),
+        ("restarting", None, None),
+        ("failed", None, "checksum_mismatch"),
+        ("future_state", None, None),
+    ],
+)
+def test_update_status_parsing(
+    state: str, progress: float | None, error: str | None
+) -> None:
+    status = parse_update_status(
+        {
+            "type": "update.status",
+            "state": state,
+            "currentVersion": "0.2.0-alpha.3",
+            "latestVersion": "0.2.0-alpha.4",
+            "releaseUrl": "https://example.test/release",
+            "sizeBytes": 1166144,
+            "progress": progress,
+            "error": error,
+        }
+    )
+    assert status.state == state
+    assert status.progress == progress
+    assert status.error == error
 
 
 async def test_older_firmware_without_capabilities() -> None:
@@ -294,6 +358,88 @@ async def test_automation_command_timeout_and_disconnect() -> None:
     task = asyncio.create_task(disconnect_client.async_next_automation_step())
     await asyncio.sleep(0)
     disconnect_client._fail_pending(LumaForgeConnectionError("WebSocket disconnected"))
+    with pytest.raises(LumaForgeConnectionError, match="disconnected"):
+        await task
+
+
+@pytest.mark.parametrize(
+    ("method", "args", "payload", "terminal"),
+    [
+        (
+            "async_check_for_update",
+            (),
+            {"type": "update.check"},
+            "available",
+        ),
+        (
+            "async_install_update",
+            ("0.2.0-alpha.4",),
+            {"type": "update.install", "version": "0.2.0-alpha.4"},
+            "restarting",
+        ),
+    ],
+)
+async def test_update_commands_wait_for_status(
+    method: str, args: tuple[str, ...], payload: dict, terminal: str
+) -> None:
+    client = LumaForgeApiClient(MagicMock(), "device.local", 80)
+    client._ws = MagicMock()
+    client._ws.send_json = AsyncMock()
+    client._ws_connected.set()
+    callback = AsyncMock()
+    client._event_callback = callback
+
+    task = asyncio.create_task(getattr(client, method)(*args))
+    await asyncio.sleep(0)
+    client._ws.send_json.assert_awaited_once_with(payload)
+    await client._handle_ws_message(
+        {
+            "type": "update.status",
+            "state": terminal,
+            "currentVersion": "0.2.0-alpha.3",
+            "latestVersion": "0.2.0-alpha.4",
+        }
+    )
+    result = await task
+    assert result.state == terminal
+    callback.assert_awaited_once()
+
+
+async def test_update_failure_is_command_error() -> None:
+    client = LumaForgeApiClient(MagicMock(), "device.local", 80)
+    client._ws = MagicMock()
+    client._ws.send_json = AsyncMock()
+    client._ws_connected.set()
+    task = asyncio.create_task(client.async_check_for_update())
+    await asyncio.sleep(0)
+    await client._handle_ws_message(
+        {
+            "type": "update.status",
+            "state": "failed",
+            "error": "invalid_manifest",
+        }
+    )
+    with pytest.raises(LumaForgeCommandError, match="invalid_manifest"):
+        await task
+
+
+async def test_update_disconnect_outcomes() -> None:
+    """Restart disconnect is expected; an earlier disconnect is uncertain."""
+    client = LumaForgeApiClient(MagicMock(), "device.local", 80)
+    client._ws = MagicMock()
+    client._ws.send_json = AsyncMock()
+    client._ws_connected.set()
+
+    task = asyncio.create_task(client.async_install_update("0.2.0-alpha.4"))
+    await asyncio.sleep(0)
+    await client._handle_ws_message({"type": "update.status", "state": "restarting"})
+    assert (await task).state == "restarting"
+    client._fail_pending(LumaForgeConnectionError("WebSocket disconnected"))
+
+    task = asyncio.create_task(client.async_install_update("0.2.0-alpha.4"))
+    await asyncio.sleep(0)
+    await client._handle_ws_message({"type": "update.status", "state": "installing"})
+    client._fail_pending(LumaForgeConnectionError("WebSocket disconnected"))
     with pytest.raises(LumaForgeConnectionError, match="disconnected"):
         await task
 

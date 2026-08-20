@@ -59,6 +59,26 @@ class LumaForgeStatus:
     cpu_percent: float | None
     memory_used_bytes: int | None
     memory_total_bytes: int | None
+    version: str | None = None
+    flash_chip_size_bytes: int | None = None
+    firmware_used_bytes: int | None = None
+    firmware_free_bytes: int | None = None
+    firmware_capacity_bytes: int | None = None
+    filesystem_used_bytes: int | None = None
+    filesystem_total_bytes: int | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class LumaForgeUpdateStatus:
+    """Firmware-provided OTA state."""
+
+    state: str
+    current_version: str | None
+    latest_version: str | None
+    release_url: str | None
+    size_bytes: int | None
+    progress: float | None
+    error: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -150,6 +170,86 @@ def _optional_float(value: Any) -> float | None:
         return float(value) if value is not None else None
     except (TypeError, ValueError):
         return None
+
+
+def _optional_nonnegative_int(value: Any) -> int | None:
+    parsed = _optional_int(value)
+    return parsed if parsed is not None and parsed >= 0 else None
+
+
+def parse_status(payload: Any, base: LumaForgeStatus | None = None) -> LumaForgeStatus:
+    """Parse REST or WebSocket system status fields."""
+    if not isinstance(payload, dict):
+        raise LumaForgeInvalidResponseError("status response must be an object")
+    wifi = _optional_str(payload.get("wifi"))
+
+    def value(key: str, fallback: Any) -> Any:
+        return payload.get(key, fallback)
+
+    return LumaForgeStatus(
+        (
+            wifi.lower() == "connected"
+            if wifi is not None
+            else base.connected
+            if base
+            else None
+        ),
+        _optional_str(value("ip", base.ip_address if base else None)),
+        _optional_int(value("rssi", base.rssi if base else None)),
+        _optional_float(value("cpuPercent", base.cpu_percent if base else None)),
+        _optional_nonnegative_int(
+            value("memoryUsedBytes", base.memory_used_bytes if base else None)
+        ),
+        _optional_nonnegative_int(
+            value("memoryTotalBytes", base.memory_total_bytes if base else None)
+        ),
+        _optional_str(value("version", base.version if base else None)),
+        _optional_nonnegative_int(
+            value("flashChipSizeBytes", base.flash_chip_size_bytes if base else None)
+        ),
+        _optional_nonnegative_int(
+            value("firmwareUsedBytes", base.firmware_used_bytes if base else None)
+        ),
+        _optional_nonnegative_int(
+            value("firmwareFreeBytes", base.firmware_free_bytes if base else None)
+        ),
+        _optional_nonnegative_int(
+            value(
+                "firmwareCapacityBytes",
+                base.firmware_capacity_bytes if base else None,
+            )
+        ),
+        _optional_nonnegative_int(
+            value("filesystemUsedBytes", base.filesystem_used_bytes if base else None)
+        ),
+        _optional_nonnegative_int(
+            value(
+                "filesystemTotalBytes",
+                base.filesystem_total_bytes if base else None,
+            )
+        ),
+    )
+
+
+def parse_update_status(payload: Any) -> LumaForgeUpdateStatus:
+    """Parse one update.status WebSocket message."""
+    if not isinstance(payload, dict) or payload.get("type") != "update.status":
+        raise LumaForgeInvalidResponseError("Invalid update status message")
+    state = _optional_str(payload.get("state"))
+    if state is None:
+        raise LumaForgeInvalidResponseError("Update status is missing state")
+    progress = _optional_float(payload.get("progress"))
+    if progress is not None and not 0 <= progress <= 100:
+        raise LumaForgeInvalidResponseError("Update progress is outside 0..100")
+    return LumaForgeUpdateStatus(
+        state,
+        _optional_str(payload.get("currentVersion")),
+        _optional_str(payload.get("latestVersion")),
+        _optional_str(payload.get("releaseUrl")),
+        _optional_nonnegative_int(payload.get("sizeBytes")),
+        progress,
+        _optional_str(payload.get("error")),
+    )
 
 
 def _object_list(payload: Any, key: str) -> list[JsonObject]:
@@ -354,6 +454,9 @@ class LumaForgeApiClient:
         self._event_callback: EventCallback | None = None
         self._command_lock = asyncio.Lock()
         self._pending_ack: tuple[str, asyncio.Future[None]] | None = None
+        self._pending_update: (
+            tuple[frozenset[str], asyncio.Future[LumaForgeUpdateStatus]] | None
+        ) = None
 
     @property
     def base_url(self) -> str:
@@ -444,16 +547,7 @@ class LumaForgeApiClient:
         )
 
     async def async_get_status(self) -> LumaForgeStatus:
-        payload = await self._get("/api/v1/status")
-        wifi = _optional_str(payload.get("wifi"))
-        return LumaForgeStatus(
-            wifi.lower() == "connected" if wifi is not None else None,
-            _optional_str(payload.get("ip")),
-            _optional_int(payload.get("rssi")),
-            _optional_float(payload.get("cpuPercent")),
-            _optional_int(payload.get("memoryUsedBytes")),
-            _optional_int(payload.get("memoryTotalBytes")),
-        )
+        return parse_status(await self._get("/api/v1/status"))
 
     async def async_get_device(self) -> JsonObject:
         return await self._get("/api/v1/device")
@@ -568,6 +662,19 @@ class LumaForgeApiClient:
         if not isinstance(payload, dict) or not isinstance(payload.get("type"), str):
             return
         message_type = payload["type"]
+        if message_type == "update.status":
+            try:
+                update = parse_update_status(payload)
+            except LumaForgeError:
+                return
+            pending_update = self._pending_update
+            if pending_update and update.state in pending_update[0]:
+                if not pending_update[1].done():
+                    pending_update[1].set_result(update)
+                self._pending_update = None
+            if self._event_callback:
+                await self._event_callback(payload)
+            return
         pending = self._pending_ack
         if message_type == "error" and pending:
             self._fail_pending(
@@ -588,6 +695,11 @@ class LumaForgeApiClient:
             if not future.done():
                 future.set_exception(error)
             self._pending_ack = None
+        if self._pending_update:
+            future = self._pending_update[1]
+            if not future.done():
+                future.set_exception(error)
+            self._pending_update = None
 
     async def _send_command(self, payload: JsonObject) -> None:
         command = payload["type"]
@@ -629,6 +741,49 @@ class LumaForgeApiClient:
     async def async_next_automation_step(self) -> None:
         """Advance the active sequence immediately."""
         await self._send_command({"type": "automation.next"})
+
+    async def _send_update_command(
+        self,
+        payload: JsonObject,
+        terminal_states: frozenset[str],
+        command_timeout: float,
+    ) -> LumaForgeUpdateStatus:
+        """Send an OTA command and wait for its terminal status message."""
+        async with self._command_lock:
+            try:
+                async with asyncio.timeout(command_timeout):
+                    await self._ws_connected.wait()
+                    if self._ws is None:
+                        raise LumaForgeConnectionError("WebSocket is unavailable")
+                    future = asyncio.get_running_loop().create_future()
+                    self._pending_update = (terminal_states, future)
+                    await self._ws.send_json(payload)
+                    result = await future
+            except TimeoutError as err:
+                self._pending_update = None
+                raise LumaForgeConnectionError("Update command timed out") from err
+            except ClientError as err:
+                self._pending_update = None
+                raise LumaForgeConnectionError("Unable to send update command") from err
+        if result.state == "failed":
+            raise LumaForgeCommandError(result.error or "Firmware update failed")
+        return result
+
+    async def async_check_for_update(self) -> LumaForgeUpdateStatus:
+        """Ask firmware to refresh its signed update manifest."""
+        return await self._send_update_command(
+            {"type": "update.check"},
+            frozenset(("available", "up_to_date", "failed")),
+            self._timeout * 6,
+        )
+
+    async def async_install_update(self, version: str) -> LumaForgeUpdateStatus:
+        """Ask firmware to install its confirmed latest version."""
+        return await self._send_update_command(
+            {"type": "update.install", "version": version},
+            frozenset(("restarting", "failed")),
+            600,
+        )
 
     async def async_set_preview(
         self,

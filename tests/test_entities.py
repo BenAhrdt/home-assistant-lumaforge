@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from unittest.mock import MagicMock
 
 from custom_components.lumaforge.api import LumaForgeData, LumaForgeStatus
@@ -62,3 +63,39 @@ def test_connectivity_reports_disconnected_after_failed_update() -> None:
     entity = LumaForgeConnectivitySensor(entry)
     assert entity.available is True
     assert entity.is_on is False
+
+
+def test_flash_and_filesystem_usage_sensors() -> None:
+    status = replace(
+        STATUS,
+        firmware_used_bytes=75,
+        firmware_capacity_bytes=100,
+        filesystem_used_bytes=1,
+        filesystem_total_bytes=4,
+    )
+    entry = entry_with_data(LumaForgeData(INFO, status))
+    entities = [LumaForgeSensor(entry, description) for description in SENSORS]
+    values = {entity.entity_description.key: entity.native_value for entity in entities}
+    assert values["firmware_usage"] == 75.0
+    assert values["filesystem_usage"] == 25.0
+
+    entry.runtime_data.data = LumaForgeData(
+        INFO,
+        replace(status, firmware_capacity_bytes=0, filesystem_total_bytes=None),
+    )
+    assert (
+        next(
+            entity
+            for entity in entities
+            if entity.entity_description.key == "firmware_usage"
+        ).native_value
+        is None
+    )
+    assert (
+        next(
+            entity
+            for entity in entities
+            if entity.entity_description.key == "filesystem_usage"
+        ).native_value
+        is None
+    )

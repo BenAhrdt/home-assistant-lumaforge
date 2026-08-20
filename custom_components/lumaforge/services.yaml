@@ -139,3 +139,22 @@ next_automation_step:
   fields:
     config_entry_id: *entry
     device_id: *device
+
+check_for_update:
+  name: Check for firmware update
+  description: Ask the device to refresh its signed update manifest.
+  fields:
+    config_entry_id: *entry
+    device_id: *device
+
+install_update:
+  name: Install firmware update
+  description: Install the latest firmware version confirmed by the device.
+  fields:
+    config_entry_id: *entry
+    device_id: *device
+    version:
+      name: Version
+      description: Optional; must exactly match the device-confirmed latest version.
+      selector:
+        text:

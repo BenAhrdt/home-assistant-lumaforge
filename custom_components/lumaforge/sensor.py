@@ -91,6 +91,98 @@ SENSORS: tuple[LumaForgeSensorDescription, ...] = (
         ),
     ),
     LumaForgeSensorDescription(
+        key="flash_chip_size",
+        translation_key="flash_chip_size",
+        device_class=SensorDeviceClass.DATA_SIZE,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        suggested_display_precision=0,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda data: data.status.flash_chip_size_bytes,
+    ),
+    LumaForgeSensorDescription(
+        key="firmware_used",
+        translation_key="firmware_used",
+        device_class=SensorDeviceClass.DATA_SIZE,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        suggested_display_precision=0,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda data: data.status.firmware_used_bytes,
+    ),
+    LumaForgeSensorDescription(
+        key="firmware_capacity",
+        translation_key="firmware_capacity",
+        device_class=SensorDeviceClass.DATA_SIZE,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        suggested_display_precision=0,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda data: data.status.firmware_capacity_bytes,
+    ),
+    LumaForgeSensorDescription(
+        key="firmware_free",
+        translation_key="firmware_free",
+        device_class=SensorDeviceClass.DATA_SIZE,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        suggested_display_precision=0,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda data: data.status.firmware_free_bytes,
+    ),
+    LumaForgeSensorDescription(
+        key="firmware_usage",
+        translation_key="firmware_usage",
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda data: (
+            round(
+                data.status.firmware_used_bytes
+                / data.status.firmware_capacity_bytes
+                * 100,
+                1,
+            )
+            if data.status.firmware_used_bytes is not None
+            and data.status.firmware_capacity_bytes not in (None, 0)
+            else None
+        ),
+    ),
+    LumaForgeSensorDescription(
+        key="filesystem_used",
+        translation_key="filesystem_used",
+        device_class=SensorDeviceClass.DATA_SIZE,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        suggested_display_precision=0,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda data: data.status.filesystem_used_bytes,
+    ),
+    LumaForgeSensorDescription(
+        key="filesystem_total",
+        translation_key="filesystem_total",
+        device_class=SensorDeviceClass.DATA_SIZE,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        suggested_display_precision=0,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda data: data.status.filesystem_total_bytes,
+    ),
+    LumaForgeSensorDescription(
+        key="filesystem_usage",
+        translation_key="filesystem_usage",
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda data: (
+            round(
+                data.status.filesystem_used_bytes
+                / data.status.filesystem_total_bytes
+                * 100,
+                1,
+            )
+            if data.status.filesystem_used_bytes is not None
+            and data.status.filesystem_total_bytes not in (None, 0)
+            else None
+        ),
+    ),
+    LumaForgeSensorDescription(
         key="ip_address",
         translation_key="ip_address",
         entity_registry_enabled_default=False,
@@ -123,7 +215,7 @@ SENSORS: tuple[LumaForgeSensorDescription, ...] = (
         translation_key="firmware_version",
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda data: data.info.firmware_version,
+        value_fn=lambda data: data.status.version or data.info.firmware_version,
     ),
     LumaForgeSensorDescription(
         key="api_version",

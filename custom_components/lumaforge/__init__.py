@@ -33,11 +33,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: LumaForgeConfigEntry) ->
     await hass.config_entries.async_forward_entry_setups(
         entry, coordinator.loaded_platforms
     )
-    if coordinator.supports_automation_sequences or client.supported_resources & {
-        "scenes",
-        "zones",
-        "automations",
-    }:
+    if (
+        coordinator.supports_automation_sequences
+        or coordinator.supports_ota_update
+        or client.supported_resources
+        & {
+            "scenes",
+            "zones",
+            "automations",
+        }
+    ):
         await coordinator.async_start()
     return True
 

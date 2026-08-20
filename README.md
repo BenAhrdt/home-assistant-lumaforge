@@ -6,7 +6,7 @@ devices via `_lumaforge._tcp.local.`, verifies their identity through
 device-internal automations through the local REST and WebSocket APIs. No
 account, cloud service, authentication, or YAML configuration is used.
 
-Current integration version: **0.3.1**. Release history is available in the
+Current integration version: **0.4.0**. Release history is available in the
 [changelog](CHANGELOG.md).
 
 ## Requirements
@@ -51,6 +51,8 @@ it refreshes the complete snapshot every 60 seconds and provides:
 - connectivity, Wi-Fi signal, CPU usage, used/total memory, and memory usage;
 - disabled-by-default diagnostic sensors for IP, hostname, device ID, device
   name, firmware/API version, model, and capabilities.
+- diagnostic flash, firmware-partition and LittleFS capacity/usage sensors on
+  firmware that provides these values.
 
 After a failed request, the integration probes only `/api/v1/info` every 15
 seconds. Once that succeeds, it immediately reloads the complete snapshot. The
@@ -83,6 +85,10 @@ discovery.
   are not represented as Home Assistant automations.
 - `lumaforge.set_led`, `lumaforge.set_led_range`, and
   `lumaforge.apply_to_zone` address LEDs without creating one entity per LED.
+- Devices advertising `ota_update` expose a native firmware update entity.
+  Checks and installations run entirely on the device; Home Assistant never
+  downloads or supplies a firmware image. Installation always requires an
+  explicit user action.
 
 Older firmware without the editor endpoints remains fully supported for
 diagnostics. Control entities become unavailable when its optional WebSocket is

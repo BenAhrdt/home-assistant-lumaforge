@@ -14,6 +14,7 @@ from custom_components.lumaforge.api import (
     LumaForgeAutomationStep,
     LumaForgeData,
     LumaForgeLayout,
+    LumaForgeUpdateStatus,
     LumaForgeZone,
 )
 from custom_components.lumaforge.const import DATA_COORDINATORS, DOMAIN
@@ -47,6 +48,7 @@ def add_coordinator(hass: HomeAssistant) -> MagicMock:
     coordinator.client.async_next_automation_step = AsyncMock()
     coordinator.client.websocket_connected = True
     coordinator.supports_automation_sequences = True
+    coordinator.supports_ota_update = False
     coordinator.automation_state = LumaForgeAutomationState(
         "running", "auto", 0, "scene", 0
     )
@@ -141,5 +143,43 @@ async def test_automation_services_reject_legacy_firmware(
             DOMAIN,
             "start_automation",
             {"config_entry_id": "entry", "automation_id": "auto"},
+            blocking=True,
+        )
+
+
+async def test_firmware_update_services(hass: HomeAssistant) -> None:
+    coordinator = add_coordinator(hass)
+    coordinator.supports_ota_update = True
+    coordinator.client.async_check_for_update = AsyncMock()
+    coordinator.client.async_install_update = AsyncMock()
+    coordinator.update_status = LumaForgeUpdateStatus(
+        "available",
+        "0.2.0-alpha.3",
+        "0.2.0-alpha.4",
+        None,
+        100,
+        None,
+        None,
+    )
+    await async_setup_services(hass)
+
+    await hass.services.async_call(
+        DOMAIN, "check_for_update", {"config_entry_id": "entry"}, blocking=True
+    )
+    await hass.services.async_call(
+        DOMAIN,
+        "install_update",
+        {"config_entry_id": "entry", "version": "0.2.0-alpha.4"},
+        blocking=True,
+    )
+
+    coordinator.client.async_check_for_update.assert_awaited_once()
+    coordinator.client.async_install_update.assert_awaited_once_with("0.2.0-alpha.4")
+
+    with pytest.raises(ServiceValidationError, match="Only the device-confirmed"):
+        await hass.services.async_call(
+            DOMAIN,
+            "install_update",
+            {"config_entry_id": "entry", "version": "0.2.0-alpha.2"},
             blocking=True,
         )

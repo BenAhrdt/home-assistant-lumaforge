@@ -54,6 +54,10 @@ START_AUTOMATION_SCHEMA = vol.Schema(
     {**AUTOMATION_TARGET_SCHEMA, vol.Required("automation_id"): cv.string}
 )
 AUTOMATION_COMMAND_SCHEMA = vol.Schema(AUTOMATION_TARGET_SCHEMA)
+CHECK_UPDATE_SCHEMA = vol.Schema(AUTOMATION_TARGET_SCHEMA)
+INSTALL_UPDATE_SCHEMA = vol.Schema(
+    {**AUTOMATION_TARGET_SCHEMA, vol.Optional("version"): cv.string}
+)
 
 
 def _coordinator(hass: HomeAssistant, data: dict[str, Any]) -> LumaForgeCoordinator:
@@ -124,6 +128,13 @@ def _require_automation_sequences(coordinator: LumaForgeCoordinator) -> None:
         raise ServiceValidationError(
             "The device does not support native automation sequences"
         )
+    if not coordinator.client.websocket_connected:
+        raise ServiceValidationError("The device WebSocket is not connected")
+
+
+def _require_ota_update(coordinator: LumaForgeCoordinator) -> None:
+    if not coordinator.supports_ota_update:
+        raise ServiceValidationError("The device does not support firmware updates")
     if not coordinator.client.websocket_connected:
         raise ServiceValidationError("The device WebSocket is not connected")
 
@@ -222,6 +233,33 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             raise ServiceValidationError(str(err)) from err
         return None
 
+    async def check_for_update(call: ServiceCall) -> ServiceResponse | None:
+        coordinator = _coordinator(hass, call.data)
+        _require_ota_update(coordinator)
+        try:
+            await coordinator.client.async_check_for_update()
+        except LumaForgeError as err:
+            raise ServiceValidationError(str(err)) from err
+        return None
+
+    async def install_update(call: ServiceCall) -> ServiceResponse | None:
+        coordinator = _coordinator(hass, call.data)
+        _require_ota_update(coordinator)
+        status = coordinator.update_status
+        latest = status.latest_version if status else None
+        if status is None or status.state != "available" or latest is None:
+            raise ServiceValidationError("No confirmed firmware update is available")
+        version = call.data.get("version", latest)
+        if version != latest:
+            raise ServiceValidationError(
+                f"Only the device-confirmed latest version {latest} can be installed"
+            )
+        try:
+            await coordinator.client.async_install_update(latest)
+        except LumaForgeError as err:
+            raise ServiceValidationError(str(err)) from err
+        return None
+
     hass.services.async_register(DOMAIN, "set_led", set_led, schema=SET_LED_SCHEMA)
     hass.services.async_register(
         DOMAIN, "set_led_range", set_led_range, schema=SET_LED_RANGE_SCHEMA
@@ -247,6 +285,12 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         next_automation_step,
         schema=AUTOMATION_COMMAND_SCHEMA,
     )
+    hass.services.async_register(
+        DOMAIN, "check_for_update", check_for_update, schema=CHECK_UPDATE_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN, "install_update", install_update, schema=INSTALL_UPDATE_SCHEMA
+    )
 
 
 def async_unload_services(hass: HomeAssistant) -> None:
@@ -258,5 +302,7 @@ def async_unload_services(hass: HomeAssistant) -> None:
         "start_automation",
         "stop_automation",
         "next_automation_step",
+        "check_for_update",
+        "install_update",
     ):
         hass.services.async_remove(DOMAIN, service)

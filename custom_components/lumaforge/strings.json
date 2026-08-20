@@ -38,6 +38,14 @@
       "device_id": { "name": "Device ID" },
       "device_name": { "name": "Device name" },
       "firmware_version": { "name": "Firmware version" },
+      "flash_chip_size": { "name": "Physical flash total" },
+      "firmware_used": { "name": "Firmware size" },
+      "firmware_capacity": { "name": "Firmware partition total" },
+      "firmware_free": { "name": "Firmware partition free" },
+      "firmware_usage": { "name": "Firmware partition usage" },
+      "filesystem_used": { "name": "LittleFS used" },
+      "filesystem_total": { "name": "LittleFS total" },
+      "filesystem_usage": { "name": "LittleFS usage" },
       "hostname": { "name": "Hostname" },
       "ip_address": { "name": "IP address" },
       "memory_total": { "name": "Total memory" },
@@ -54,6 +62,9 @@
     },
     "switch": {
       "automation_enabled": { "name": "Automation – {name} enabled" }
+    },
+    "update": {
+      "firmware": { "name": "Firmware" }
     }
   },
   "services": {
@@ -80,6 +91,14 @@
     "next_automation_step": {
       "name": "Next automation step",
       "description": "Immediately advance the active automation sequence"
+    },
+    "check_for_update": {
+      "name": "Check for firmware update",
+      "description": "Ask the device to refresh its signed update manifest"
+    },
+    "install_update": {
+      "name": "Install firmware update",
+      "description": "Install the latest version confirmed by the device"
     }
   }
 }

@@ -6,6 +6,16 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-20
+
+### Added
+
+- Native firmware UpdateEntity for devices advertising `ota_update`, including
+  device-side check/install commands, progress, errors and reboot recovery.
+- WebSocket-driven system status plus diagnostic sensors for physical flash,
+  firmware partition and LittleFS capacity and usage.
+- Optional `lumaforge.check_for_update` and `lumaforge.install_update` services.
+
 ## [0.3.1] - 2026-08-20
 
 ### Changed
@@ -94,7 +104,8 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   are used.
 - Downloaded diagnostics redact IP addresses and hostnames.
 
-[Unreleased]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.1.3...v0.2.0

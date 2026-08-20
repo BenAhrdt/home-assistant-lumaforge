@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import replace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
@@ -14,12 +16,13 @@ from custom_components.lumaforge.api import (
     LumaForgeConnectionError,
     LumaForgeData,
     LumaForgeScene,
+    LumaForgeUpdateStatus,
     parse_automations,
 )
 from custom_components.lumaforge.const import OFFLINE_UPDATE_INTERVAL, UPDATE_INTERVAL
 from custom_components.lumaforge.coordinator import LumaForgeCoordinator
 
-from .conftest import INFO, SEQUENCE_INFO, STATUS
+from .conftest import INFO, OTA_INFO, SEQUENCE_INFO, STATUS
 
 
 async def test_coordinator_update(hass: HomeAssistant) -> None:
@@ -30,6 +33,17 @@ async def test_coordinator_update(hass: HomeAssistant) -> None:
     data = await coordinator._async_update_data()
     assert data.info.device_id == "lf-51bf60200d1e"
     assert data.status.cpu_percent == 4.2
+
+
+def test_ota_platform_requires_capability(hass: HomeAssistant) -> None:
+    client = MagicMock()
+    client.supported_resources = set()
+    coordinator = LumaForgeCoordinator(hass, client)
+    coordinator.async_set_updated_data(LumaForgeData(INFO, STATUS))
+    assert Platform.UPDATE not in coordinator.platforms
+
+    coordinator.async_set_updated_data(LumaForgeData(OTA_INFO, STATUS))
+    assert Platform.UPDATE in coordinator.platforms
 
 
 async def test_coordinator_unavailable(hass: HomeAssistant) -> None:
@@ -187,6 +201,64 @@ async def test_authoritative_automation_state_and_reconnect(
         }
     )
     assert coordinator.automation_state.scene_id == "other"
+
+
+async def test_system_and_update_status_websocket(hass: HomeAssistant) -> None:
+    client = MagicMock()
+    coordinator = LumaForgeCoordinator(hass, client)
+    coordinator.async_set_updated_data(LumaForgeData(OTA_INFO, STATUS))
+
+    await coordinator._async_websocket_event(
+        {
+            "type": "system.status",
+            "version": "0.2.0-alpha.4",
+            "cpuPercent": 18.4,
+            "firmwareUsedBytes": 75,
+            "firmwareCapacityBytes": 100,
+        }
+    )
+    await coordinator._async_websocket_event(
+        {
+            "type": "update.status",
+            "state": "downloading",
+            "currentVersion": "0.2.0-alpha.3",
+            "latestVersion": "0.2.0-alpha.4",
+            "progress": 62,
+        }
+    )
+
+    assert coordinator.data.status.version == "0.2.0-alpha.4"
+    assert coordinator.data.status.cpu_percent == 18.4
+    assert coordinator.data.status.memory_total_bytes == STATUS.memory_total_bytes
+    assert coordinator.system_status_received_at is not None
+    assert coordinator.update_status.progress == 62
+    assert coordinator.update_status_received_at is not None
+
+
+async def test_ota_reconnect_confirms_installed_version(hass: HomeAssistant) -> None:
+    client = MagicMock()
+    client.async_get_data = AsyncMock(
+        return_value=LumaForgeData(OTA_INFO, replace(STATUS, version="0.2.0-alpha.4"))
+    )
+    coordinator = LumaForgeCoordinator(hass, client)
+    coordinator.async_set_updated_data(LumaForgeData(OTA_INFO, STATUS))
+    coordinator.update_status = LumaForgeUpdateStatus(
+        "restarting",
+        "0.2.0-alpha.3",
+        "0.2.0-alpha.4",
+        None,
+        None,
+        None,
+        None,
+    )
+    coordinator.ota_restart_expected = True
+
+    data = await coordinator._async_update_data()
+
+    coordinator.async_set_updated_data(data)
+    assert coordinator.installed_firmware_version == "0.2.0-alpha.4"
+    assert coordinator.update_status.state == "up_to_date"
+    assert coordinator.ota_restart_expected is False
 
 
 async def test_parallel_automation_updates_preserve_changes(

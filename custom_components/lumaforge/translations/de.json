@@ -31,6 +31,14 @@
       "capabilities": { "name": "Fähigkeiten" },
       "cpu_usage": { "name": "CPU-Auslastung" }, "device_id": { "name": "Geräte-ID" },
       "device_name": { "name": "Gerätename" }, "firmware_version": { "name": "Firmwareversion" },
+      "flash_chip_size": { "name": "Physischer Flash gesamt" },
+      "firmware_used": { "name": "Firmwaregröße" },
+      "firmware_capacity": { "name": "Firmwarepartition gesamt" },
+      "firmware_free": { "name": "Firmwarepartition frei" },
+      "firmware_usage": { "name": "Firmwarepartitionsauslastung" },
+      "filesystem_used": { "name": "LittleFS belegt" },
+      "filesystem_total": { "name": "LittleFS gesamt" },
+      "filesystem_usage": { "name": "LittleFS-Auslastung" },
       "hostname": { "name": "Hostname" }, "ip_address": { "name": "IP-Adresse" },
       "memory_total": { "name": "Gesamtspeicher" }, "memory_usage": { "name": "Speicherauslastung" },
       "memory_used": { "name": "Verwendeter Speicher" }, "model": { "name": "Modell" },
@@ -40,6 +48,9 @@
     "scene": { "stored_scene": { "name": "Szene – {name}" } },
     "switch": {
       "automation_enabled": { "name": "Automation – {name} aktiviert" }
+    },
+    "update": {
+      "firmware": { "name": "Firmware" }
     }
   },
   "services": {
@@ -66,6 +77,14 @@
     "next_automation_step": {
       "name": "Nächster Automationsschritt",
       "description": "Sofort zum nächsten Schritt der aktiven Automation wechseln"
+    },
+    "check_for_update": {
+      "name": "Nach Firmwareupdate suchen",
+      "description": "Das Gerät zum erneuten Abruf seines signierten Update-Manifests auffordern"
+    },
+    "install_update": {
+      "name": "Firmwareupdate installieren",
+      "description": "Die vom Gerät bestätigte neueste Version installieren"
     }
   }
 }

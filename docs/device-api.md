@@ -30,7 +30,12 @@ interpreted as missing capabilities.
 `device_id`, mutable `device_name`, model, firmware/API version, network object
 and an array of capability strings. `GET /api/v1/status` returns optional
 `wifi`, `ip`, `rssi`, `cpuPercent`, `memoryUsedBytes` and `memoryTotalBytes`
-fields. These two endpoints remain mandatory.
+fields. Newer firmware also reports `version`, `flashChipSizeBytes`,
+`firmwareUsedBytes`, `firmwareFreeBytes`, `firmwareCapacityBytes`,
+`filesystemUsedBytes`, and `filesystemTotalBytes`. Physical flash capacity is
+not the firmware app-partition capacity; firmware usage is calculated against
+`firmwareCapacityBytes`. Simulator storage fields are null. These two endpoints
+remain mandatory.
 
 The complete snapshot is refreshed every 60 seconds while connected. Once a
 request fails, only the lightweight `/api/v1/info` identity endpoint is probed
@@ -130,6 +135,32 @@ changes:
 A stopped state uses null IDs and indices. Home Assistant does not invent a
 state before this message arrives and clears the previous state on disconnect.
 
+Approximately every five seconds, `system.status` supplies the same runtime,
+firmware, flash and filesystem fields as `/api/v1/status`. It is the preferred
+live source; REST remains the initial, recovery and periodic reconciliation
+source.
+
+Devices advertising `ota_update` also send `update.status` with `state`,
+`currentVersion`, `latestVersion`, `releaseUrl`, `sizeBytes`, optional
+`progress`, and optional `error`. Supported states are `idle`, `checking`,
+`available`, `up_to_date`, `downloading`, `installing`, `restarting`, and
+`failed`; unknown future states are retained without breaking other entities.
+
+Home Assistant can send `{"type":"update.check"}` and waits for
+`available`, `up_to_date`, or `failed`. Installation sends only the exact
+device-confirmed version:
+
+```json
+{"type":"update.install","version":"0.2.0-alpha.4"}
+```
+
+The device obtains and verifies the image through its TLS-secured manifest.
+Home Assistant never sends a download URL or image and never installs
+automatically. `restarting` completes the command successfully; the expected
+WebSocket disconnect is followed by a complete REST refresh, and the new
+installed version is confirmed after reconnect. Disconnecting earlier during
+download or installation remains an unknown outcome.
+
 The client handles `layout.updated`, `zones.updated`, `scenes.updated` and
 `automations.updated`. A simulator payload is validated and applied directly.
 An ESP32 event without `payload` reloads the corresponding REST endpoint.
@@ -151,6 +182,10 @@ An ESP32 event without `payload` reloads the corresponding REST endpoint.
 - `lumaforge.start_automation`, `lumaforge.stop_automation`, and
   `lumaforge.next_automation_step` expose the same native sequence commands to
   Home Assistant automations and scripts.
+- With `ota_update`, one firmware `UpdateEntity` exposes installed/latest
+  versions, release URL, progress and failure details. Optional
+  `lumaforge.check_for_update` and `lumaforge.install_update` services wrap the
+  same central client.
 
 Entities use immutable device object IDs in their unique IDs. Coordinator
 updates reconcile additions, renames and deletions; deleted objects are also

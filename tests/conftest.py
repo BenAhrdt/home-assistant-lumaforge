@@ -28,6 +28,7 @@ SEQUENCE_INFO = replace(
     INFO,
     capabilities=(*INFO.capabilities, "automations", "automation_sequences"),
 )
+OTA_INFO = replace(INFO, capabilities=(*INFO.capabilities, "ota_update"))
 STATUS = LumaForgeStatus(
     connected=True,
     ip_address="192.168.2.123",

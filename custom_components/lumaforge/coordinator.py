@@ -18,10 +18,13 @@ from .api import (
     LumaForgeAutomationState,
     LumaForgeData,
     LumaForgeError,
+    LumaForgeUpdateStatus,
     parse_automation_state,
     parse_automations,
     parse_layout,
     parse_scenes,
+    parse_status,
+    parse_update_status,
     parse_zones,
 )
 from .const import DOMAIN, OFFLINE_UPDATE_INTERVAL, UPDATE_INTERVAL
@@ -44,6 +47,10 @@ class LumaForgeCoordinator(DataUpdateCoordinator[LumaForgeData]):
         self.zone_states: dict[str, dict[str, Any]] = {}
         self.automation_state: LumaForgeAutomationState | None = None
         self.automation_state_received_at: datetime | None = None
+        self.system_status_received_at: datetime | None = None
+        self.update_status: LumaForgeUpdateStatus | None = None
+        self.update_status_received_at: datetime | None = None
+        self.ota_restart_expected = False
         self.loaded_platforms: list[Platform] = []
         self._offline = False
         self._websocket_connected = False
@@ -52,6 +59,16 @@ class LumaForgeCoordinator(DataUpdateCoordinator[LumaForgeData]):
     def supports_automation_sequences(self) -> bool:
         """Return whether native multi-step commands are confirmed."""
         return "automation_sequences" in self.data.info.capabilities
+
+    @property
+    def supports_ota_update(self) -> bool:
+        """Return whether native firmware OTA is confirmed."""
+        return "ota_update" in self.data.info.capabilities
+
+    @property
+    def installed_firmware_version(self) -> str | None:
+        """Prefer the freshest status version over the identity snapshot."""
+        return self.data.status.version or self.data.info.firmware_version
 
     @property
     def platforms(self) -> list[Platform]:
@@ -70,6 +87,8 @@ class LumaForgeCoordinator(DataUpdateCoordinator[LumaForgeData]):
             platforms.append(Platform.LIGHT)
         if "automations" in resources:
             platforms.append(Platform.SWITCH)
+        if self.supports_ota_update:
+            platforms.append(Platform.UPDATE)
         return platforms
 
     async def _async_update_data(self) -> LumaForgeData:
@@ -85,6 +104,24 @@ class LumaForgeCoordinator(DataUpdateCoordinator[LumaForgeData]):
             raise UpdateFailed(str(err)) from err
         self._offline = False
         self.update_interval = UPDATE_INTERVAL
+        installed = data.status.version or data.info.firmware_version
+        if self.update_status is not None and installed is not None:
+            self.update_status = replace(self.update_status, current_version=installed)
+        if (
+            self.update_status is not None
+            and self.update_status.state == "restarting"
+            and installed is not None
+            and installed == self.update_status.latest_version
+        ):
+            self.update_status = replace(
+                self.update_status,
+                state="up_to_date",
+                current_version=installed,
+                progress=None,
+                error=None,
+            )
+            self.update_status_received_at = datetime.now(UTC)
+            self.ota_restart_expected = False
         return data
 
     async def async_start(self) -> None:
@@ -113,6 +150,34 @@ class LumaForgeCoordinator(DataUpdateCoordinator[LumaForgeData]):
             self.automation_state = None
             self.automation_state_received_at = None
             await self.async_request_refresh()
+            return
+        if event_type == "system.status":
+            try:
+                status = parse_status(event, self.data.status)
+            except LumaForgeError as err:
+                _LOGGER.debug("Ignoring invalid system status: %s", err)
+                return
+            self.system_status_received_at = datetime.now(UTC)
+            if self.update_status is not None and status.version is not None:
+                self.update_status = replace(
+                    self.update_status, current_version=status.version
+                )
+            self.async_set_updated_data(replace(self.data, status=status))
+            return
+        if event_type == "update.status":
+            try:
+                self.update_status = parse_update_status(event)
+            except LumaForgeError as err:
+                _LOGGER.debug("Ignoring invalid update status: %s", err)
+                return
+            self.update_status_received_at = datetime.now(UTC)
+            self.ota_restart_expected = self.update_status.state == "restarting"
+            if self.update_status.state == "failed":
+                _LOGGER.warning(
+                    "LumaForge firmware update failed: %s",
+                    self.update_status.error or "unknown error",
+                )
+            self.async_update_listeners()
             return
         if event_type == "automation.state":
             try:
