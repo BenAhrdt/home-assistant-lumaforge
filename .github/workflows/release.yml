@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out release tag
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Verify tag matches manifest version
         env:
