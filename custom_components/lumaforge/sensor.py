@@ -15,7 +15,7 @@ from homeassistant.components.sensor import (
 from homeassistant.const import (
     PERCENTAGE,
     EntityCategory,
-    UnitOfDataSize,
+    UnitOfInformation,
     UnitOfSignalStrength,
 )
 from homeassistant.core import HomeAssistant
@@ -58,7 +58,7 @@ SENSORS: tuple[LumaForgeSensorDescription, ...] = (
         key="memory_used",
         translation_key="memory_used",
         device_class=SensorDeviceClass.DATA_SIZE,
-        native_unit_of_measurement=UnitOfDataSize.BYTES,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -68,7 +68,7 @@ SENSORS: tuple[LumaForgeSensorDescription, ...] = (
         key="memory_total",
         translation_key="memory_total",
         device_class=SensorDeviceClass.DATA_SIZE,
-        native_unit_of_measurement=UnitOfDataSize.BYTES,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
         entity_category=EntityCategory.DIAGNOSTIC,
