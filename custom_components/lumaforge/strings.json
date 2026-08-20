@@ -3,6 +3,7 @@
     "abort": {
       "already_configured": "Device is already configured",
       "cannot_connect": "Unable to connect to the device",
+      "discovery_only": "LumaForge devices are added automatically when discovered on the local network",
       "id_mismatch": "The discovered device ID does not match the API response",
       "invalid_response": "The device returned an invalid response",
       "unsupported_api": "The device uses an unsupported API version"
@@ -16,14 +17,6 @@
       "confirm": {
         "description": "Do you want to add {name}?",
         "title": "Discover LumaForge device"
-      },
-      "user": {
-        "data": {
-          "host": "Host or IP address",
-          "port": "Port"
-        },
-        "description": "Enter the local address of the LumaForge device.",
-        "title": "Add LumaForge"
       }
     }
   },

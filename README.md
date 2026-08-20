@@ -5,7 +5,7 @@ devices via `_lumaforge._tcp.local.`, verifies their identity through
 `/api/v1/info`, and exposes useful read-only diagnostics. No account, cloud
 service, authentication, or YAML configuration is used.
 
-Current integration version: **0.1.1**. Release history is available in the
+Current integration version: **0.1.2**. Release history is available in the
 [changelog](CHANGELOG.md).
 
 ## Requirements
@@ -32,9 +32,10 @@ your Home Assistant configuration directory, then restart Home Assistant.
 ## Setup and discovery
 
 Devices advertising `_lumaforge._tcp.local.` appear under
-**Settings → Devices & services**. Review and confirm the discovery. If mDNS is
-unavailable, select **Add integration**, search for **LumaForge**, and enter the
-device hostname/IP and port (normally 80).
+**Settings → Devices & services**. Review and confirm each discovery. LumaForge
+is discovery-only: users never need to enter an IP address or port. Each device
+gets its own config entry, while all devices are grouped under the same
+LumaForge integration.
 
 The API `device_id` is the sole persistent identity. Changing an IP address,
 hostname, or user-facing device name does not create another device. Rediscovery
@@ -65,8 +66,9 @@ HTTP without authentication, keep devices on a trusted local network.
 mDNS uses multicast and generally does not cross VLANs or routed subnets. If
 Home Assistant and the device are separated, allow multicast DNS traffic or use
 an mDNS reflector/repeater appropriate for your network. Check that multicast
-is not blocked by Wi-Fi client isolation or firewall rules. Manual setup can
-bypass discovery but still requires direct HTTP reachability.
+is not blocked by Wi-Fi client isolation or firewall rules. There is no manual
+host/IP setup fallback; direct local HTTP reachability is still required after
+discovery.
 
 ## Current limitations and roadmap
 

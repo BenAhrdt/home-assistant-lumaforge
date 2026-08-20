@@ -6,6 +6,15 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-08-20
+
+### Changed
+
+- Make setup discovery-only. Users are no longer asked for internal host and
+  port connection data when adding the integration manually.
+- Clarify that each discovered device gets an independent config entry under
+  the same LumaForge integration.
+
 ## [0.1.1] - 2026-08-20
 
 ### Fixed
@@ -39,6 +48,7 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   are used.
 - Downloaded diagnostics redact IP addresses and hostnames.
 
-[Unreleased]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/BenAhrdt/home-assistant-lumaforge/releases/tag/v0.1.0

@@ -13,7 +13,6 @@ from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.lumaforge.api import LumaForgeConnectionError
 from custom_components.lumaforge.const import CONF_PORT, DOMAIN
 
 
@@ -77,19 +76,11 @@ async def test_rediscovery_updates_host(
     assert entry.data[CONF_HOST] == "192.168.2.123"
 
 
-async def test_manual_and_connection_error(
-    hass: HomeAssistant, mock_api: AsyncMock
-) -> None:
+async def test_user_setup_is_discovery_only(hass: HomeAssistant) -> None:
+    """Manual setup does not ask users for internal connection data."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN,
         context={"source": config_entries.SOURCE_USER},
-        data={CONF_HOST: "device.local", CONF_PORT: 80},
     )
-    assert result["type"] is FlowResultType.CREATE_ENTRY
-    mock_api.side_effect = LumaForgeConnectionError
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN,
-        context={"source": config_entries.SOURCE_USER},
-        data={CONF_HOST: "offline.local", CONF_PORT: 80},
-    )
-    assert result["errors"] == {"base": "cannot_connect"}
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "discovery_only"

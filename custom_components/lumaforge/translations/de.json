@@ -3,6 +3,7 @@
     "abort": {
       "already_configured": "Gerät ist bereits konfiguriert",
       "cannot_connect": "Verbindung zum Gerät fehlgeschlagen",
+      "discovery_only": "LumaForge-Geräte werden automatisch hinzugefügt, sobald sie im lokalen Netzwerk erkannt werden",
       "id_mismatch": "Die erkannte Geräte-ID stimmt nicht mit der API-Antwort überein",
       "invalid_response": "Das Gerät hat eine ungültige Antwort zurückgegeben",
       "unsupported_api": "Das Gerät verwendet eine nicht unterstützte API-Version"
@@ -13,12 +14,7 @@
       "unsupported_api": "Das Gerät verwendet eine nicht unterstützte API-Version"
     },
     "step": {
-      "confirm": { "description": "Möchtest du {name} hinzufügen?", "title": "LumaForge-Gerät erkannt" },
-      "user": {
-        "data": { "host": "Hostname oder IP-Adresse", "port": "Port" },
-        "description": "Gib die lokale Adresse des LumaForge-Geräts ein.",
-        "title": "LumaForge hinzufügen"
-      }
+      "confirm": { "description": "Möchtest du {name} hinzufügen?", "title": "LumaForge-Gerät erkannt" }
     }
   },
   "entity": {

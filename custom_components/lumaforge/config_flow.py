@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.const import CONF_HOST
@@ -86,34 +85,5 @@ class LumaForgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Handle manual setup by host/IP."""
-        errors: dict[str, str] = {}
-        if user_input is not None:
-            host = user_input[CONF_HOST].strip()
-            port = user_input[CONF_PORT]
-            try:
-                info = await self._async_verify(host, port)
-            except LumaForgeConnectionError:
-                errors["base"] = "cannot_connect"
-            except LumaForgeIncompatibleApiError:
-                errors["base"] = "unsupported_api"
-            except LumaForgeInvalidResponseError:
-                errors["base"] = "invalid_response"
-            else:
-                await self.async_set_unique_id(info.device_id)
-                self._abort_if_unique_id_configured(
-                    updates={CONF_HOST: host, CONF_PORT: port}
-                )
-                return self.async_create_entry(
-                    title=info.device_name,
-                    data={CONF_HOST: host, CONF_PORT: port},
-                )
-        schema = vol.Schema(
-            {
-                vol.Required(CONF_HOST): str,
-                vol.Optional(CONF_PORT, default=DEFAULT_PORT): vol.All(
-                    vol.Coerce(int), vol.Range(min=1, max=65535)
-                ),
-            }
-        )
-        return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
+        """Explain that setup is handled automatically through discovery."""
+        return self.async_abort(reason="discovery_only")
