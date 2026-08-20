@@ -31,6 +31,10 @@ from .const import DOMAIN, OFFLINE_UPDATE_INTERVAL, UPDATE_INTERVAL
 
 _LOGGER = logging.getLogger(__name__)
 
+_ACTIVE_UPDATE_STATES = frozenset(
+    ("checking", "downloading", "installing", "restarting")
+)
+
 
 class LumaForgeCoordinator(DataUpdateCoordinator[LumaForgeData]):
     """Poll a LumaForge device."""
@@ -70,6 +74,24 @@ class LumaForgeCoordinator(DataUpdateCoordinator[LumaForgeData]):
         """Prefer the freshest status version over the identity snapshot."""
         return self.data.status.version or self.data.info.firmware_version
 
+    def _reconcile_update_status(self, installed: str | None) -> None:
+        """Finish a stale OTA state once the target version is confirmed."""
+        if self.update_status is None or installed is None:
+            return
+        self.update_status = replace(self.update_status, current_version=installed)
+        if (
+            self.update_status.state in _ACTIVE_UPDATE_STATES
+            and installed == self.update_status.latest_version
+        ):
+            self.update_status = replace(
+                self.update_status,
+                state="up_to_date",
+                progress=None,
+                error=None,
+            )
+            self.update_status_received_at = datetime.now(UTC)
+            self.ota_restart_expected = False
+
     @property
     def platforms(self) -> list[Platform]:
         """Return platforms backed by endpoints confirmed during setup."""
@@ -105,23 +127,7 @@ class LumaForgeCoordinator(DataUpdateCoordinator[LumaForgeData]):
         self._offline = False
         self.update_interval = UPDATE_INTERVAL
         installed = data.status.version or data.info.firmware_version
-        if self.update_status is not None and installed is not None:
-            self.update_status = replace(self.update_status, current_version=installed)
-        if (
-            self.update_status is not None
-            and self.update_status.state == "restarting"
-            and installed is not None
-            and installed == self.update_status.latest_version
-        ):
-            self.update_status = replace(
-                self.update_status,
-                state="up_to_date",
-                current_version=installed,
-                progress=None,
-                error=None,
-            )
-            self.update_status_received_at = datetime.now(UTC)
-            self.ota_restart_expected = False
+        self._reconcile_update_status(installed)
         return data
 
     async def async_start(self) -> None:
@@ -158,10 +164,7 @@ class LumaForgeCoordinator(DataUpdateCoordinator[LumaForgeData]):
                 _LOGGER.debug("Ignoring invalid system status: %s", err)
                 return
             self.system_status_received_at = datetime.now(UTC)
-            if self.update_status is not None and status.version is not None:
-                self.update_status = replace(
-                    self.update_status, current_version=status.version
-                )
+            self._reconcile_update_status(status.version)
             self.async_set_updated_data(replace(self.data, status=status))
             return
         if event_type == "update.status":

@@ -235,7 +235,10 @@ async def test_system_and_update_status_websocket(hass: HomeAssistant) -> None:
     assert coordinator.update_status_received_at is not None
 
 
-async def test_ota_reconnect_confirms_installed_version(hass: HomeAssistant) -> None:
+@pytest.mark.parametrize("active_state", ["downloading", "installing", "restarting"])
+async def test_ota_reconnect_confirms_installed_version(
+    hass: HomeAssistant, active_state: str
+) -> None:
     client = MagicMock()
     client.async_get_data = AsyncMock(
         return_value=LumaForgeData(OTA_INFO, replace(STATUS, version="0.2.0-alpha.4"))
@@ -243,7 +246,7 @@ async def test_ota_reconnect_confirms_installed_version(hass: HomeAssistant) -> 
     coordinator = LumaForgeCoordinator(hass, client)
     coordinator.async_set_updated_data(LumaForgeData(OTA_INFO, STATUS))
     coordinator.update_status = LumaForgeUpdateStatus(
-        "restarting",
+        active_state,
         "0.2.0-alpha.3",
         "0.2.0-alpha.4",
         None,
@@ -259,6 +262,30 @@ async def test_ota_reconnect_confirms_installed_version(hass: HomeAssistant) -> 
     assert coordinator.installed_firmware_version == "0.2.0-alpha.4"
     assert coordinator.update_status.state == "up_to_date"
     assert coordinator.ota_restart_expected is False
+
+
+async def test_system_status_finishes_stale_installing_state(
+    hass: HomeAssistant,
+) -> None:
+    """A post-reboot status event clears an OTA state missed at disconnect."""
+    coordinator = LumaForgeCoordinator(hass, MagicMock())
+    coordinator.async_set_updated_data(LumaForgeData(OTA_INFO, STATUS))
+    coordinator.update_status = LumaForgeUpdateStatus(
+        "installing",
+        "0.2.0-alpha.3",
+        "0.2.0-alpha.4",
+        None,
+        None,
+        None,
+        None,
+    )
+
+    await coordinator._async_websocket_event(
+        {"type": "system.status", "version": "0.2.0-alpha.4"}
+    )
+
+    assert coordinator.update_status.state == "up_to_date"
+    assert coordinator.update_status.current_version == "0.2.0-alpha.4"
 
 
 async def test_parallel_automation_updates_preserve_changes(
