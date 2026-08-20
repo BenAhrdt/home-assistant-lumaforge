@@ -41,5 +41,7 @@ async def test_setup_and_unload(hass: HomeAssistant) -> None:
         assert await async_setup_entry(hass, entry)
         forward.assert_awaited_once()
         assert entry.runtime_data.data.info.device_id == INFO.device_id
+        assert entry.runtime_data.client._ws_task is None
         assert await async_unload_entry(hass, entry)
         unload.assert_awaited_once()
+        assert entry.runtime_data.client._ws_task is None
