@@ -22,8 +22,9 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   local configuration URL.
 - Redacted downloadable diagnostics.
 - German and English user-interface translations.
-- HACS metadata, automated tests, Ruff linting, Hassfest validation, and HACS
-  validation workflows.
+- HACS metadata and a project-local brand icon.
+- Automated tests, Ruff linting, Hassfest validation, HACS validation,
+  dependency updates, and tag-driven GitHub releases.
 
 ### Security
 

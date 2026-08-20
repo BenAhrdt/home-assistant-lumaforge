@@ -77,3 +77,11 @@ no “firmware is current” claim and has no `UpdateEntity`.
 
 Planned work includes LED output controls, scene and zone support, and OTA
 updates once the firmware exposes a trustworthy local update contract.
+
+## Releases
+
+Versions follow Semantic Versioning. The integration version in
+`custom_components/lumaforge/manifest.json` must match the Git tag with a `v`
+prefix, for example manifest version `0.1.0` and tag `v0.1.0`. Pushing a matching
+tag creates a GitHub Release automatically. A mismatched tag fails without
+publishing a release.

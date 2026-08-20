@@ -1,12 +1,12 @@
 {
-  "codeowners": [],
-  "config_flow": true,
-  "documentation": "https://github.com/lumaforge/home-assistant-lumaforge",
   "domain": "lumaforge",
+  "name": "LumaForge",
+  "codeowners": ["@BenAhrdt"],
+  "config_flow": true,
+  "documentation": "https://github.com/BenAhrdt/home-assistant-lumaforge",
   "integration_type": "device",
   "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/lumaforge/home-assistant-lumaforge/issues",
-  "name": "LumaForge",
+  "issue_tracker": "https://github.com/BenAhrdt/home-assistant-lumaforge/issues",
   "requirements": [],
   "version": "0.1.0",
   "zeroconf": ["_lumaforge._tcp.local."]
