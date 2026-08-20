@@ -2,10 +2,11 @@
 
 A local-only Home Assistant custom integration for LumaForge devices. It discovers
 devices via `_lumaforge._tcp.local.`, verifies their identity through
-`/api/v1/info`, and exposes useful read-only diagnostics. No account, cloud
-service, authentication, or YAML configuration is used.
+`/api/v1/info`, exposes diagnostics, and controls stored scenes, zones and
+device-internal automations through the local REST and WebSocket APIs. No
+account, cloud service, authentication, or YAML configuration is used.
 
-Current integration version: **0.1.3**. Release history is available in the
+Current integration version: **0.2.0**. Release history is available in the
 [changelog](CHANGELOG.md).
 
 ## Requirements
@@ -70,15 +71,25 @@ is not blocked by Wi-Fi client isolation or firewall rules. There is no manual
 host/IP setup fallback; direct local HTTP reachability is still required after
 discovery.
 
-## Current limitations and roadmap
+## Control entities and services
 
-This first release does not control LEDs, scenes, or zones. The device API only
-reports the installed firmware version; it does not provide a latest version,
-release URL, or update state. Consequently, this integration deliberately makes
-no “firmware is current” claim and has no `UpdateEntity`.
+- Stored scenes are Home Assistant scene entities, with one scene-stop button.
+- Zones are RGB light entities with acknowledged, in-memory optimistic state.
+- Device-internal automations have run buttons and, when available, enable
+  switches. They are not represented as Home Assistant automations.
+- `lumaforge.set_led`, `lumaforge.set_led_range`, and
+  `lumaforge.apply_to_zone` address LEDs without creating one entity per LED.
 
-Planned work includes LED output controls, scene and zone support, and OTA
-updates once the firmware exposes a trustworthy local update contract.
+Older firmware without the editor endpoints remains fully supported for
+diagnostics. Control entities become unavailable when its optional WebSocket is
+disconnected. Zone state is not persisted by current firmware, so it is unknown
+after reload until Home Assistant sends an acknowledged command. Timed device
+automations may require the web editor to remain open; autonomous ESP32
+scheduling is not claimed.
+
+The [device API contract](docs/device-api.md) documents every used REST path,
+WebSocket command, transport difference, compatibility behavior and known
+firmware limitation.
 
 ## Releases
 

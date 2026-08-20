@@ -1,0 +1,114 @@
+set_led:
+  name: Set LED
+  description: Set one logical LED through the device preview API.
+  fields:
+    config_entry_id: &entry
+      name: Config entry
+      description: Config entry of the target LumaForge device.
+      selector:
+        config_entry:
+          integration: lumaforge
+    device_id: &device
+      name: Device ID
+      description: Stable device ID; an alternative to the config entry.
+      selector:
+        text:
+    output_id: &output
+      name: Output ID
+      description: Optional output containing every selected logical LED.
+      selector:
+        text:
+    led_index:
+      name: LED index
+      description: Zero-based logical LED index.
+      required: true
+      selector:
+        number:
+          min: 0
+          mode: box
+    color: &color
+      name: Color
+      description: RGB color sent to the preview API.
+      required: true
+      selector:
+        color_rgb:
+    brightness: &brightness
+      name: Brightness
+      description: Device brightness from 0.0 through 1.0.
+      default: 1.0
+      selector:
+        number:
+          min: 0
+          max: 1
+          step: 0.01
+    effect: &effect
+      name: Effect
+      description: Firmware preview effect.
+      default: solid
+      selector:
+        select:
+          options: [solid, blink, pulse, wipe, chase, rainbow]
+    speed: &speed
+      name: Speed
+      description: Effect speed from 0.0 through 1.0.
+      default: 1.0
+      selector:
+        number:
+          min: 0
+          max: 1
+          step: 0.01
+    direction: &direction
+      name: Direction
+      description: Effect animation direction.
+      default: forward
+      selector:
+        select:
+          options: [forward, reverse]
+
+set_led_range:
+  name: Set LED range
+  description: Set an inclusive logical LED range through the preview API.
+  fields:
+    config_entry_id: *entry
+    device_id: *device
+    output_id: *output
+    start_index:
+      name: Start index
+      description: First logical LED index, included in the selection.
+      required: true
+      selector:
+        number:
+          min: 0
+          mode: box
+    end_index:
+      name: End index
+      description: Last logical LED index, included in the selection.
+      required: true
+      selector:
+        number:
+          min: 0
+          mode: box
+    color: *color
+    brightness: *brightness
+    effect: *effect
+    speed: *speed
+    direction: *direction
+
+apply_to_zone:
+  name: Apply to zone
+  description: Set every logical LED belonging to a stored zone.
+  fields:
+    config_entry_id: *entry
+    device_id: *device
+    output_id: *output
+    zone_id:
+      name: Zone ID
+      description: Stable ID of a zone stored on the device.
+      required: true
+      selector:
+        text:
+    color: *color
+    brightness: *brightness
+    effect: *effect
+    speed: *speed
+    direction: *direction

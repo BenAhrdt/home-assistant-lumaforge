@@ -18,6 +18,7 @@
     }
   },
   "entity": {
+    "button": { "stop_scene": { "name": "Stop scene" } },
     "binary_sensor": { "connectivity": { "name": "Connectivity" } },
     "sensor": {
       "api_version": { "name": "API version" }, "capabilities": { "name": "Capabilities" },
@@ -27,6 +28,20 @@
       "memory_total": { "name": "Total memory" }, "memory_usage": { "name": "Memory usage" },
       "memory_used": { "name": "Used memory" }, "model": { "name": "Model" },
       "wifi_signal": { "name": "Wi-Fi signal strength" }
+    }
+  },
+  "services": {
+    "set_led": {
+      "name": "Set LED",
+      "description": "Set one logical LED through the preview API"
+    },
+    "set_led_range": {
+      "name": "Set LED range",
+      "description": "Set an inclusive logical LED range through the preview API"
+    },
+    "apply_to_zone": {
+      "name": "Apply to zone",
+      "description": "Set all LEDs in a stored zone"
     }
   }
 }

@@ -8,8 +8,9 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import LumaForgeApiClient
-from .const import CONF_PORT, DEFAULT_PORT, PLATFORMS
+from .const import CONF_PORT, DATA_COORDINATORS, DEFAULT_PORT, DOMAIN
 from .coordinator import LumaForgeCoordinator
+from .services import async_setup_services, async_unload_services
 
 type LumaForgeConfigEntry = ConfigEntry[LumaForgeCoordinator]
 
@@ -24,10 +25,33 @@ async def async_setup_entry(hass: HomeAssistant, entry: LumaForgeConfigEntry) ->
     coordinator = LumaForgeCoordinator(hass, client)
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = coordinator
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    coordinators = domain_data.setdefault(DATA_COORDINATORS, {})
+    coordinators[entry.entry_id] = coordinator
+    if "layout" in client.supported_resources:
+        await async_setup_services(hass)
+    coordinator.loaded_platforms = coordinator.platforms
+    await hass.config_entries.async_forward_entry_setups(
+        entry, coordinator.loaded_platforms
+    )
+    if client.supported_resources & {"scenes", "zones", "automations"}:
+        await coordinator.async_start()
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: LumaForgeConfigEntry) -> bool:
     """Unload a LumaForge config entry."""
-    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if not await hass.config_entries.async_unload_platforms(
+        entry, entry.runtime_data.loaded_platforms
+    ):
+        return False
+    await entry.runtime_data.async_shutdown()
+    coordinators = hass.data[DOMAIN][DATA_COORDINATORS]
+    coordinators.pop(entry.entry_id, None)
+    if not any(
+        "layout" in item.client.supported_resources for item in coordinators.values()
+    ):
+        async_unload_services(hass)
+    if not coordinators:
+        hass.data.pop(DOMAIN)
+    return True

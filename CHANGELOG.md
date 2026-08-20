@@ -6,6 +6,16 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-20
+
+### Added
+
+- Dynamic scene, zone light, automation button and automation switch entities.
+- ESP32 and simulator WebSocket transports with acknowledgement handling and
+  reconnect.
+- Targeted LED, LED-range and zone services.
+- Documentation of the complete local REST and WebSocket API.
+
 ## [0.1.3] - 2026-08-20
 
 ### Fixed
@@ -55,7 +65,8 @@ project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   are used.
 - Downloaded diagnostics redact IP addresses and hostnames.
 
-[Unreleased]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.1.3...v0.2.0
 [0.1.3]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/BenAhrdt/home-assistant-lumaforge/compare/v0.1.0...v0.1.1
