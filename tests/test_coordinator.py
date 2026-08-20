@@ -68,15 +68,15 @@ async def test_established_websocket_disconnect_triggers_probe(
     hass: HomeAssistant,
 ) -> None:
     client = MagicMock()
-    client.async_get_data = AsyncMock(return_value=LumaForgeData(INFO, STATUS))
     coordinator = LumaForgeCoordinator(hass, client)
     coordinator.async_set_updated_data(LumaForgeData(INFO, STATUS))
+    coordinator.async_request_refresh = AsyncMock()
 
     await coordinator._async_websocket_event({"type": "connected"})
-    client.async_get_data.reset_mock()
+    coordinator.async_request_refresh.reset_mock()
     await coordinator._async_websocket_event({"type": "disconnected"})
 
-    client.async_get_data.assert_awaited_once()
+    coordinator.async_request_refresh.assert_awaited_once()
 
 
 async def test_websocket_update_with_payload(hass: HomeAssistant) -> None:
