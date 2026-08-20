@@ -46,10 +46,14 @@ async def test_ipv6_url_and_optional_values() -> None:
     assert info.rssi is None
 
 
-async def test_invalid_json(aiohttp_server) -> None:
+async def test_invalid_json(aiohttp_server, socket_enabled) -> None:
     """Invalid JSON is reported as an invalid response."""
+
+    async def invalid_response(request):
+        return web.Response(text="not-json")
+
     app = web.Application()
-    app.router.add_get("/api/v1/info", lambda request: web.Response(text="not-json"))
+    app.router.add_get("/api/v1/info", invalid_response)
     server = await aiohttp_server(app)
     async with ClientSession() as session:
         client = LumaForgeApiClient(session, server.host, server.port)
@@ -57,7 +61,7 @@ async def test_invalid_json(aiohttp_server) -> None:
             await client.async_get_info()
 
 
-async def test_timeout(aiohttp_server) -> None:
+async def test_timeout(aiohttp_server, socket_enabled) -> None:
     """A request timeout is reported as a connection error."""
 
     async def slow_response(request):

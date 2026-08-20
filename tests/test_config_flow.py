@@ -10,6 +10,7 @@ from homeassistant import config_entries
 from homeassistant.components.zeroconf import ZeroconfServiceInfo
 from homeassistant.const import CONF_HOST
 from homeassistant.core import HomeAssistant
+from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.lumaforge.api import LumaForgeConnectionError
@@ -41,10 +42,10 @@ async def test_zeroconf_success(
         context={"source": config_entries.SOURCE_ZEROCONF},
         data=discovery(properties),
     )
-    assert result["type"] is config_entries.FlowResultType.FORM
+    assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "confirm"
     result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
-    assert result["type"] is config_entries.FlowResultType.CREATE_ENTRY
+    assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["result"].unique_id == "lf-51bf60200d1e"
     assert result["data"] == {CONF_HOST: "192.168.2.123", CONF_PORT: 80}
 
@@ -84,7 +85,7 @@ async def test_manual_and_connection_error(
         context={"source": config_entries.SOURCE_USER},
         data={CONF_HOST: "device.local", CONF_PORT: 80},
     )
-    assert result["type"] is config_entries.FlowResultType.CREATE_ENTRY
+    assert result["type"] is FlowResultType.CREATE_ENTRY
     mock_api.side_effect = LumaForgeConnectionError
     result = await hass.config_entries.flow.async_init(
         DOMAIN,
